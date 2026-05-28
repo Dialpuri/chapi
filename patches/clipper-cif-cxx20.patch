@@ -1,0 +1,14 @@
+diff --git a/clipper/cif/cif_data_io.cpp b/clipper/cif/cif_data_io.cpp
+index fb159a6..df3a9b1 100644
+--- a/clipper/cif/cif_data_io.cpp
++++ b/clipper/cif/cif_data_io.cpp
+@@ -769,7 +769,8 @@ int CIFfile::set_cell_symm_reso_by_kludge( std::string cif_file_name ) {
+ 
+    from.open(cif_file_name.c_str()); 
+ 
+-   while (from >> &word[0]) { 
++   std::string _word_s;
++   while (from >> _word_s) { strncpy(word, _word_s.c_str(), sizeof(word)-1); word[sizeof(word)-1] = '\0';
+  
+       if (read_reso_flag == 1) { 
+ 

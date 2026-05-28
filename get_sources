@@ -1,0 +1,105 @@
+mkdir -p checkout
+cd checkout
+
+if [ -d "clipper" ]; then
+    echo "Found clipper"
+else
+    # echo "Checking out clipper"
+    git clone https://ccp4forge.rc-harwell.ac.uk/ccp4/clipper.git clipper-gemmi
+    cd clipper-gemmi
+    git checkout gemmi
+    find . -maxdepth 1 ! -name 'clipper' -delete
+    git apply ../../patches/clipper-*.patch
+    cd ..
+    mv clipper-gemmi clipper
+    # echo
+    #  echo "Checking out clipper"
+    # git clone https://ccp4forge.rc-harwell.ac.uk/ccp4/clipper.git clipper
+    # cd clipper
+    # git checkout large_maps_support
+    # git apply ../../patches/clipper-*.patch
+    # cd ..
+    # mv clipper-gemmi clipper
+    echo
+    
+fi
+
+if [ -d "gemmi" ]; then
+    echo "Found gemmi"
+else
+    echo "Checking out gemmi"
+    git clone https://github.com/project-gemmi/gemmi.git gemmi
+    cd gemmi
+    git checkout v0.7.3
+    rm CMakeLists.txt
+    cd ..
+    echo
+fi
+
+if [ -d "mmdb2" ]; then
+    echo "Found mmdb2"
+else
+    echo "Checking out mmdb2"
+    curl -L http://www.ysbl.york.ac.uk/jsd523/mmdb2-2.0.22.tar.gz -o mmdb2-2.0.22.tar.gz
+    tar xf mmdb2-2.0.22.tar.gz
+    ln -s mmdb2-2.0.22 mmdb2
+    echo
+fi
+
+if [ -d "libccp4" ]; then
+    echo "Found libccp4"
+else
+    echo "Checking out libccp4"
+    curl -L http://www.ysbl.york.ac.uk/jsd523/libccp4-8.0.0.tar.gz -o libccp4-8.0.0.tar.gz
+    tar xf libccp4-8.0.0.tar.gz
+    mv libccp4-8.0.0 libccp4
+    echo
+fi
+
+if [ -d "fftw-2.1.5" ]; then
+    echo "Found fftw-2.1.5"
+else
+
+    echo "Downloading out fftw-2.1.5"
+    curl -L http://www.fftw.org/fftw-2.1.5.tar.gz -o fftw-2.1.5.tar.gz
+    echo
+    echo "Unpacking fftw-2.1.5"
+    tar xf fftw-2.1.5.tar.gz
+    echo
+fi
+
+if [ -d "ssm" ]; then
+    echo "Found ssm"
+else
+    echo "Checking out ssm"
+    git clone https://ccp4forge.rc-harwell.ac.uk/ccp4/ssm.git ssm
+    echo
+fi
+
+glm_release="1.0.1"
+if [ -d "glm" ]; then
+    echo "Found glm"
+else
+    echo "Downloading glm-$glm_release"
+    curl -L https://github.com/g-truc/glm/archive/refs/tags/$glm_release.tar.gz -o glm-$glm_release.tar.gz
+    tar xf glm-$glm_release.tar.gz
+    mv glm-$glm_release glm
+    echo
+fi
+
+fftw3_release="3.3.10"
+if [ -r fftw3 ]; then
+    echo "Using existing fftw3"
+else
+    echo "Downloading out fftw-$fftw3_release"
+    curl -L http://www.fftw.org/fftw-$fftw3_release.tar.gz -o fftw-$fftw3_release.tar.gz
+    echo
+    echo "Unpacking fftw-$fftw3_release"
+    tar xf fftw-$fftw3_release.tar.gz
+    mv fftw-$fftw3_release fftw3
+    git apply ../patches/fftw3-*.patch
+fi
+echo
+
+
+cd ..
