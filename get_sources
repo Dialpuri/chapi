@@ -1,3 +1,11 @@
+# Apply coot CMakeLists patch if not already applied (idempotent).
+if ! git -C coot apply --check --reverse ../patches/coot-cmakelists.patch 2>/dev/null; then
+    git -C coot apply ../patches/coot-cmakelists.patch
+    echo "Applied coot-cmakelists.patch"
+else
+    echo "coot-cmakelists.patch already applied"
+fi
+
 mkdir -p checkout
 cd checkout
 

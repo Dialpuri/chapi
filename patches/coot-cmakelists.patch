@@ -1,0 +1,484 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 34ca6dc8e..1859446f4 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -14,18 +14,24 @@ endif()
+ # Without RDKit, Coot currently needs C++17
+ set(CMAKE_CXX_STANDARD 20)
+ 
+-if (APPLE)
+-else()
+-   find_package(CCP4 REQUIRED mmdb2 ssm clipper-core clipper-mmdb clipper-ccp4 clipper-contrib clipper-minimol clipper-cif)
+-endif(APPLE)
++if(NOT SKBUILD)
++  if (APPLE)
++  else()
++    find_package(CCP4 REQUIRED mmdb2 ssm clipper-core clipper-mmdb clipper-ccp4 clipper-contrib clipper-minimol clipper-cif)
++  endif(APPLE)
++endif()
+ 
+ find_package(BLAS)
+ find_package(GSL REQUIRED)
+ find_package(PNG REQUIRED)
+-find_package(GEMMI REQUIRED)
++if(NOT SKBUILD)
++  find_package(GEMMI REQUIRED)
++endif()
+ find_package(Threads REQUIRED)
+ find_package(Boost COMPONENTS iostreams regex thread serialization REQUIRED)
+-find_package(glm REQUIRED)
++if(NOT SKBUILD)
++  find_package(glm REQUIRED)
++endif()
+ 
+ set(THREADS_PREFER_PTHREAD_FLAG ON)
+ 
+@@ -43,6 +49,96 @@ if(NOT nanobind_DIR)
+ endif()
+ find_package(nanobind CONFIG REQUIRED)
+ 
++if(SKBUILD)
++  set(WRK_DIR    "${CMAKE_CURRENT_SOURCE_DIR}/..")
++  set(CHECKOUT_DIR "${WRK_DIR}/checkout")
++
++  add_subdirectory(${WRK_DIR}/fftw              ${CMAKE_BINARY_DIR}/fftw)
++  add_subdirectory(${WRK_DIR}/rfftw             ${CMAKE_BINARY_DIR}/rfftw)
++  add_subdirectory(${WRK_DIR}/fftw3             ${CMAKE_BINARY_DIR}/fftw3)
++  add_subdirectory(${WRK_DIR}/mmdb2             ${CMAKE_BINARY_DIR}/mmdb2)
++  add_subdirectory(${WRK_DIR}/ccp4              ${CMAKE_BINARY_DIR}/ccp4)
++  add_subdirectory(${WRK_DIR}/gemmi             ${CMAKE_BINARY_DIR}/gemmi)
++  add_subdirectory(${WRK_DIR}/ssm               ${CMAKE_BINARY_DIR}/ssm)
++  add_subdirectory(${WRK_DIR}/clipper/core      ${CMAKE_BINARY_DIR}/clipper/core)
++  add_subdirectory(${WRK_DIR}/clipper/mmdb      ${CMAKE_BINARY_DIR}/clipper/mmdb)
++  add_subdirectory(${WRK_DIR}/clipper/cif       ${CMAKE_BINARY_DIR}/clipper/cif)
++  add_subdirectory(${WRK_DIR}/clipper/ccp4      ${CMAKE_BINARY_DIR}/clipper/ccp4)
++  add_subdirectory(${WRK_DIR}/clipper/contrib   ${CMAKE_BINARY_DIR}/clipper/contrib)
++  add_subdirectory(${WRK_DIR}/clipper/minimol   ${CMAKE_BINARY_DIR}/clipper/minimol)
++  add_subdirectory(${WRK_DIR}/clipper/gemmi     ${CMAKE_BINARY_DIR}/clipper/gemmi)
++
++  # Map cmake targets to the variable names used throughout this file
++  set(MMDB2_LIBRARY           mmdb2)
++  set(CCP4C_LIBRARY           ccp4)
++  set(SSM_LIBRARY             ssm)
++  set(CLIPPER-CORE_LIBRARY    clipper-core)
++  set(CLIPPER-CCP4_LIBRARY    clipper-ccp4)
++  set(CLIPPER-MMDB_LIBRARY    clipper-mmdb)
++  set(CLIPPER-CIF_LIBRARY     clipper-cif)
++  set(CLIPPER-MINIMOL_LIBRARY clipper-minimol)
++  set(CLIPPER-CONTRIB_LIBRARY clipper-contrib)
++  set(CLIPPER-GEMMI_LIBRARY   clipper-gemmi)
++  set(FFTW2_LIBRARY           fftw)
++  set(RFFTW2_LIBRARY          rfftw)
++  set(FFTW3F_LIBRARY          fftw3f)
++
++  add_library(gemmi::gemmi_cpp ALIAS gemmi_cpp)
++
++  # Include directories from the checked-out sources
++  set(MMDB2_INCLUDE_DIR           "${CHECKOUT_DIR}/mmdb2")
++  set(SSM_INCLUDE_DIR             "${CHECKOUT_DIR}/ssm")
++  set(CLIPPER-CORE_INCLUDE_DIR    "${CHECKOUT_DIR}/clipper")
++  set(CLIPPER-MMDB_INCLUDE_DIR    "${CHECKOUT_DIR}/clipper")
++  set(CLIPPER-CCP4_INCLUDE_DIR    "${CHECKOUT_DIR}/clipper")
++  set(CLIPPER-MINIMOL_INCLUDE_DIR "${CHECKOUT_DIR}/clipper")
++  set(CLIPPER-CONTRIB_INCLUDE_DIR "${CHECKOUT_DIR}/clipper")
++  set(CLIPPER-CIF_INCLUDE_DIR     "${CHECKOUT_DIR}/clipper")
++  set(CLIPPER-GEMMI_INCLUDE_DIR   "${CHECKOUT_DIR}/clipper")
++  set(FFTW2_INCLUDE_DIRS          "${CHECKOUT_DIR}/fftw-2.1.5/fftw")
++  set(RFFTW2_INCLUDE_DIRS         "${CHECKOUT_DIR}/fftw-2.1.5/rfftw")
++  set(GEMMI_INCLUDE_DIR           "${CHECKOUT_DIR}/gemmi/include")
++  set(GLM_INCLUDE_DIRS            "${CHECKOUT_DIR}/glm")
++  include_directories(
++    ${CHECKOUT_DIR}/mmdb2
++    ${CHECKOUT_DIR}/clipper
++    ${CHECKOUT_DIR}/libccp4/ccp4
++    ${CHECKOUT_DIR}/gemmi/include
++    ${CHECKOUT_DIR}/ssm
++  )
++
++  # Linux cibuildwheel: conda-forge rdkit has libs+headers but no cmake config
++  if(EXISTS /opt/rdkit/include/rdkit)
++    set(_rdkit_prefix /opt/rdkit)
++    set(RDKit_INCLUDE_DIRS "${_rdkit_prefix}/include/rdkit")
++    set(RDKit_INCLUDE_DIR  "${_rdkit_prefix}/include/rdkit")
++
++    # rdkit_base is an INTERFACE-only target (compile definitions, no shared lib)
++    if(NOT TARGET RDKit::rdkit_base)
++      add_library(RDKit::rdkit_base INTERFACE IMPORTED GLOBAL)
++      set_target_properties(RDKit::rdkit_base PROPERTIES
++        INTERFACE_INCLUDE_DIRECTORIES "${RDKit_INCLUDE_DIRS}")
++    endif()
++
++    # All other targets have a corresponding shared library named libRDKit<name>.so
++    foreach(_tgt IN ITEMS
++        Descriptors DistGeomHelpers PartialCharges
++        ForceFieldHelpers ForceField Optimizer
++        MolDraw2D MolChemicalFeatures RDGeneral)
++      find_library(_rdkit_${_tgt}_loc NAMES "RDKit${_tgt}"
++        PATHS "${_rdkit_prefix}/lib" NO_DEFAULT_PATH)
++      if(_rdkit_${_tgt}_loc AND NOT TARGET RDKit::${_tgt})
++        add_library(RDKit::${_tgt} SHARED IMPORTED GLOBAL)
++        set_target_properties(RDKit::${_tgt} PROPERTIES
++          IMPORTED_LOCATION "${_rdkit_${_tgt}_loc}"
++          INTERFACE_INCLUDE_DIRECTORIES "${RDKit_INCLUDE_DIRS}")
++      endif()
++    endforeach()
++
++    set(RDKit_FOUND TRUE)
++  endif()
++endif()
++
+ # only via homebrew on macOS (not tried to compile them myself) - see below also though.
+ if (APPLE)
+ else()
+@@ -60,10 +156,12 @@ endif(WIN32)
+ # - If the user set CMAKE_INSTALL_PREFIX explicitly, install relative to it.
+ # - Otherwise (default /usr/local), install directly to Python_SITELIB so that
+ #   venv builds land inside the venv rather than in /usr/local.
+-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+-  set(Python_SITELIB_REL "${Python_SITELIB}")
+-else()
+-  set(Python_SITELIB_REL "lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages")
++if(NOT SKBUILD)
++  if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
++    set(Python_SITELIB_REL "${Python_SITELIB}")
++  else()
++    set(Python_SITELIB_REL "lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages")
++  endif()
+ endif()
+ 
+ 
+@@ -78,13 +176,17 @@ add_definitions(-DANALYSE_REFINEMENT_TIMING -DPACKAGE_VERSION="1.3.1"
+ #
+ add_definitions(-DMAKE_ENHANCED_LIGAND_TOOLS="1")
+ message("-- Found ENHANCED_LIGAND_TOOLS setting - now requiring the RDKit")
+-find_package(Cairo REQUIRED)
++if(NOT RDKit_FOUND AND NOT SKBUILD)
++  find_package(Cairo REQUIRED)
++endif()
+ # Boost::system is header-only since 1.69 but RDKit's cmake config references it as a target.
+ # Create it if missing (e.g. system Boost version mismatch with autobuild RDKit).
+ if(NOT TARGET Boost::system)
+   add_library(Boost::system INTERFACE IMPORTED)
+ endif()
+-find_package(RDKit CONFIG COMPONENTS RDGeneral REQUIRED)
++if(NOT RDKit_FOUND)
++  find_package(RDKit CONFIG COMPONENTS RDGeneral REQUIRED)
++endif()
+ set(RDKit_libs_for_libcootapi RDKit::rdkit_base RDKit::Descriptors RDKit::DistGeomHelpers RDKit::PartialCharges RDKit::ForceFieldHelpers RDKit::ForceField RDKit::Optimizer RDKit::MolDraw2D  RDKit::MolChemicalFeatures)
+ 
+ # we can be on Apple, and also have access to homebrew dwarf and elf - but this typically not the case
+@@ -108,7 +210,12 @@ endif()
+ 
+ #  pyrogen, auxil, goograph, src ignored.
+ 
+-add_library(cootmoleculestotriangles SHARED
++if(SKBUILD)
++  set(M2T_LIB_TYPE STATIC)
++else()
++  set(M2T_LIB_TYPE SHARED)
++endif()
++add_library(cootmoleculestotriangles ${M2T_LIB_TYPE}
+             ${coot_src}/MoleculesToTriangles/CXXSurface/CXXBall.cpp
+             ${coot_src}/MoleculesToTriangles/CXXSurface/CXXChargeTable.cpp
+             ${coot_src}/MoleculesToTriangles/CXXSurface/CXXCircle.cpp
+@@ -529,8 +636,8 @@ if(MAEPARSER_LIBS)
+     target_link_libraries(cootapi PUBLIC ${MAEPARSER_LIBS})
+ endif()
+ 
+-nanobind_add_module(coot_headless_api ${coot_src}/api/molecules-container-nanobind.cc
+-                                      ${coot_src}/api/molecules-container-nanobind-functions.cc)
++nanobind_add_module(coot_headless_api MODULE ${coot_src}/api/molecules-container-nanobind.cc
++                                            ${coot_src}/api/molecules-container-nanobind-functions.cc)
+ 
+ # on macOS only?
+ # target_compile_options(cootapi PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+@@ -546,7 +653,11 @@ if (MAKE_COOT_HEADLESS_API_PYI)
+     PYTHON_PATH $<TARGET_FILE_DIR:coot_headless_api>
+     DEPENDS coot_headless_api
+   )
+-  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/coot_headless_api.pyi DESTINATION ${Python_SITELIB_REL})
++  if(SKBUILD)
++    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/coot_headless_api.pyi DESTINATION ${SKBUILD_PLATLIB_DIR})
++  else()
++    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/coot_headless_api.pyi DESTINATION ${Python_SITELIB_REL})
++  endif()
+   # MARKER_FILE py.typed
+ endif()
+ 
+@@ -563,16 +674,24 @@ if (ENABLE_DWARF)
+ endif()
+ 
+ target_include_directories(cootmoleculestotriangles PRIVATE ${MMDB2_INCLUDE_DIR}
+-   ${CLIPPER-CORE_INCLUDE_DIR} ${coot_src} ${CLIPPER-MMDB_INCLUDE_DIR} ${CLIPPER-CCP4_INCLUDE_DIR} ${FFTW2_INCLUDE_DIRS})
++   ${CLIPPER-CORE_INCLUDE_DIR} ${coot_src} ${CLIPPER-MMDB_INCLUDE_DIR} ${CLIPPER-CCP4_INCLUDE_DIR} ${FFTW2_INCLUDE_DIRS} ${RFFTW2_INCLUDE_DIRS})
+ 
+ # use MMDB2_INCLUDE_DIR to find the RDKIT for now.
+-target_include_directories(cootapi PRIVATE ${coot_src} ${coot_src}/coords ${coot_src}/utils ${coot_src}/ccp4mg-utils ${coot_src}/ccp4mg-utils/util ${coot_src}/ccp4mg-utils/pygl ${MMDB2_INCLUDE_DIR} ${SSM_INCLUDE_DIR} ${CLIPPER-CORE_INCLUDE_DIR} ${CLIPPER-MMDB_INCLUDE_DIR} ${CLIPPER-CCP4_INCLUDE_DIR} ${FFTW2_INCLUDE_DIRS} ${RDKit_INCLUDE_DIRS} ${GLM_INCLUDE_DIRS} ${GSL_INCLUDE_DIRS} ${PNG_PNG_INCLUDE_DIR} ${RDKit_INCLUDE_DIR})
++target_include_directories(cootapi PRIVATE
++  ${coot_src} ${coot_src}/coords ${coot_src}/utils ${coot_src}/ccp4mg-utils
++  ${coot_src}/ccp4mg-utils/util ${coot_src}/ccp4mg-utils/pygl
++  ${MMDB2_INCLUDE_DIR} ${SSM_INCLUDE_DIR}
++  ${CLIPPER-CORE_INCLUDE_DIR} ${CLIPPER-MMDB_INCLUDE_DIR} ${CLIPPER-CCP4_INCLUDE_DIR}
++  ${CLIPPER-MINIMOL_INCLUDE_DIR} ${CLIPPER-CONTRIB_INCLUDE_DIR} ${CLIPPER-CIF_INCLUDE_DIR}
++  ${FFTW2_INCLUDE_DIRS}
++  ${GEMMI_INCLUDE_DIR} ${CLIPPER-GEMMI_INCLUDE_DIR}
++  ${RDKit_INCLUDE_DIRS} ${GLM_INCLUDE_DIRS} ${GSL_INCLUDE_DIRS} ${PNG_PNG_INCLUDE_DIR} ${RDKit_INCLUDE_DIR})
+ 
+ target_link_libraries(cootmoleculestotriangles PRIVATE ${SSM_LIBRARY} ${CLIPPER-MINIMOL_LIBRARY} ${CLIPPER-MMDB_LIBRARY} ${CLIPPER-CIF_LIBRARY} ${CLIPPER-CORE_LIBRARY} ${CLIPPER-CCP4_LIBRARY} ${CLIPPER-CONTRIB_LIBRARY} ${FFTW2_LIBRARY} ${RFFTW2_LIBRARY} ${MMDB2_LIBRARY} ${CCP4C_LIBRARY})
+ 
+ # Charles adds Boost::iostreams Boost::filesystem Boost::system. I don't know why Boost::filesystem was added - I have removed it.
+ # 2025-09-20 14:15 PE: Boost::system is no longer a thing - I have removed it
+-target_link_libraries(cootapi PRIVATE cootmoleculestotriangles ${SSM_LIBRARY} ${CLIPPER-MINIMOL_LIBRARY} ${CLIPPER-MMDB_LIBRARY} ${CLIPPER-CIF_LIBRARY} ${CLIPPER-CORE_LIBRARY} ${CLIPPER-CCP4_LIBRARY} ${CLIPPER-CONTRIB_LIBRARY} ${FFTW2_LIBRARY} ${RFFTW2_LIBRARY} ${MMDB2_LIBRARY} ${CCP4C_LIBRARY} ${ZLIB_LIBRARIES} ${GSL_LIBRARIES} ${GSL_CBLAS_LIBRARY} ${RDKit_libs_for_libcootapi} ${PNG_LIBRARY} Boost::thread Boost::iostreams gemmi::gemmi_cpp ${libdwarf} ${libelf})
++target_link_libraries(cootapi PRIVATE cootmoleculestotriangles ${SSM_LIBRARY} ${CLIPPER-MINIMOL_LIBRARY} ${CLIPPER-MMDB_LIBRARY} ${CLIPPER-CIF_LIBRARY} ${CLIPPER-CORE_LIBRARY} ${CLIPPER-CCP4_LIBRARY} ${CLIPPER-CONTRIB_LIBRARY} ${CLIPPER-GEMMI_LIBRARY} ${FFTW2_LIBRARY} ${RFFTW2_LIBRARY} ${FFTW3F_LIBRARY} ${MMDB2_LIBRARY} ${CCP4C_LIBRARY} ${ZLIB_LIBRARIES} ${GSL_LIBRARIES} ${GSL_CBLAS_LIBRARY} ${RDKit_libs_for_libcootapi} ${PNG_LIBRARY} Boost::thread Boost::iostreams gemmi::gemmi_cpp ${libdwarf} ${libelf})
+ 
+ if (OSPRAY_PREFIX)
+    target_link_libraries(cootapi PRIVATE ospray::ospray)
+@@ -592,125 +711,137 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+   target_link_libraries(cootapi PRIVATE netapi32.lib)
+ endif()
+ 
+-target_include_directories(coot_headless_api PRIVATE ${coot_src} ${coot_src}/coords ${coot_src}/utils ${coot_src}/ccp4mg-utils
+-                                                     ${coot_src}/ccp4mg-utils/util ${coot_src}/ccp4mg-utils/pygl
+-                                                     ${MMDB2_INCLUDE_DIR} ${SSM_INCLUDE_DIR} ${CLIPPER-CORE_INCLUDE_DIR}
+-                                                     ${CLIPPER-MMDB_INCLUDE_DIR} ${CLIPPER-CCP4_INCLUDE_DIR}
+-                                                     ${FFTW2_INCLUDE_DIRS}
+-                                                     ${RDKit_INCLUDE_DIRS} ${GLM_INCLUDE_DIRS}
+-                                                     ${GSL_INCLUDE_DIRS} ${PNG_PNG_INCLUDE_DIR})
+-
+-add_executable(coot-findligand ${coot_src}/ligand/find-ligand.cc)
+-
+-add_executable(coot-findwaters ${coot_src}/ligand/find-waters.cc)
+-
+-add_executable(coot-mini-rsr ${coot_src}/ideal/mini-rsr.cc)
+-
+-add_executable(coot-res-tracer-libcootapi ${coot_src}/ligand/res-tracer.cc)
+-
+-add_executable(test-molecules-container ${coot_src}/api/test-molecules-container.cc
+-                                        ${coot_src}/api/filo-tests.cc
+-                                        ${coot_src}/api/lucrezia-tests.cc)
+-
+-add_executable(test-docking ${coot_src}/docking/test-docking.cc)
+-
+-add_executable(mmcif-tests ${coot_src}/api/mmcif-tests-main.cc ${coot_src}/api/mmcif-tests.cc)
+-
+-target_compile_features(coot-mini-rsr PRIVATE cxx_std_17)
+-
+-target_compile_features(coot-res-tracer-libcootapi PRIVATE cxx_std_17)
++target_include_directories(coot_headless_api PRIVATE
++  ${coot_src} ${coot_src}/coords ${coot_src}/utils ${coot_src}/ccp4mg-utils
++  ${coot_src}/ccp4mg-utils/util ${coot_src}/ccp4mg-utils/pygl
++  ${MMDB2_INCLUDE_DIR} ${SSM_INCLUDE_DIR}
++  ${CLIPPER-CORE_INCLUDE_DIR} ${CLIPPER-MMDB_INCLUDE_DIR} ${CLIPPER-CCP4_INCLUDE_DIR}
++  ${CLIPPER-MINIMOL_INCLUDE_DIR} ${CLIPPER-CONTRIB_INCLUDE_DIR} ${CLIPPER-CIF_INCLUDE_DIR}
++  ${FFTW2_INCLUDE_DIRS} ${RFFTW2_INCLUDE_DIRS}
++  ${GEMMI_INCLUDE_DIR} ${CLIPPER-GEMMI_INCLUDE_DIR}
++  ${RDKit_INCLUDE_DIRS} ${GLM_INCLUDE_DIRS}
++  ${GSL_INCLUDE_DIRS} ${PNG_PNG_INCLUDE_DIR})
+ 
+ target_link_libraries(coot_headless_api PUBLIC cootapi  ${CLIPPER-CORE_LIBRARY} ${CLIPPER-CCP4_LIBRARY} ${MMDB2_LIBRARY}
+                       ${RDKit_libs_for_libcootapi} ${libdwarf} ${libelf})
+ 
+-target_include_directories(coot-findligand PRIVATE ${MMDB2_INCLUDE_DIR} ${CLIPPER-CORE_INCLUDE_DIR} ${coot_src})
+-
+-target_include_directories(coot-findwaters PRIVATE ${MMDB2_INCLUDE_DIR} ${CLIPPER-CORE_INCLUDE_DIR} ${coot_src})
+-
+-target_include_directories(coot-mini-rsr PRIVATE ${MMDB2_INCLUDE_DIR} ${coot_src} ${PNG_INCLUDE_DIR})
+-
+-target_include_directories(coot-res-tracer-libcootapi PRIVATE ${MMDB2_INCLUDE_DIR} ${coot_src} ${PNG_INCLUDE_DIR})
+-
+-target_link_libraries(coot-findligand PUBLIC cootapi ${CLIPPER-CORE_LIBRARY} ${CLIPPER-CCP4_LIBRARY} ${MMDB2_LIBRARY} Boost::thread Threads::Threads)
+-
+-target_link_libraries(coot-findwaters PUBLIC cootapi ${CLIPPER-CORE_LIBRARY} ${CLIPPER-CCP4_LIBRARY} ${MMDB2_LIBRARY})
+-
+-target_link_libraries(coot-mini-rsr PUBLIC cootapi ${CLIPPER-CORE_LIBRARY} ${CLIPPER-CCP4_LIBRARY} ${MMDB2_LIBRARY} Threads::Threads)
+-
+-target_link_libraries(coot-res-tracer-libcootapi PUBLIC cootapi ${CLIPPER-CORE_LIBRARY} ${CLIPPER-CCP4_LIBRARY} ${MMDB2_LIBRARY} Threads::Threads)
+-
+-target_include_directories(test-molecules-container PRIVATE ${coot_src} ${coot_src}/coords ${coot_src}/utils ${coot_src}/ccp4mg-utils ${coot_src}/ccp4mg-utils/util ${coot_src}/ccp4mg-utils/pygl ${MMDB2_INCLUDE_DIR}/include ${SSM_INCLUDE_DIR} ${CLIPPER-CORE_INCLUDE_DIR} ${CLIPPER-MMDB_INCLUDE_DIR} ${CLIPPER-CCP4_INCLUDE_DIR} ${FFTW2_INCLUDE_DIRS} ${RDKit_INCLUDE_DIRS} ${PNG_INCLUDE_DIR})
+-
+-target_link_libraries(test-molecules-container PUBLIC cootapi ${SSM_LIBRARY} ${CLIPPER-MINIMOL_LIBRARY} ${CLIPPER-MMDB_LIBRARY} ${CLIPPER-CIF_LIBRARY} ${CLIPPER-CORE_LIBRARY} ${CLIPPER-CCP4_LIBRARY} ${CLIPPER-CONTRIB_LIBRARY} ${FFTW2_LIBRARY} ${RFFTW2_LIBRARY} ${MMDB2_LIBRARY} ${CCP4C_LIBRARY} ${ZLIB_LIBRARIES} ${GSL_LIBRARIES} ${RDKit_libs_for_libcootapi} ${PNG_LIBRARY} gemmi::gemmi_cpp ${libdwarf} ${libelf} Threads::Threads)
+-
+-target_include_directories(test-docking PRIVATE ${coot_src} ${coot_src}/coords ${coot_src}/utils ${coot_src}/ccp4mg-utils ${coot_src}/ccp4mg-utils/util ${coot_src}/ccp4mg-utils/pygl ${MMDB2_INCLUDE_DIR} ${CLIPPER-CORE_INCLUDE_DIR} ${CLIPPER-CCP4_INCLUDE_DIR} ${GSL_INCLUDE_DIRS} ${GLM_INCLUDE_DIRS})
+-
+-target_link_libraries(test-docking PUBLIC cootapi ${CLIPPER-CORE_LIBRARY} ${CLIPPER-CCP4_LIBRARY} ${MMDB2_LIBRARY} ${GSL_LIBRARIES} glm::glm Threads::Threads)
+-
+-target_include_directories(mmcif-tests PRIVATE ${MMDB2_INCLUDE_DIR} ${CLIPPER-MMDB_INCLUDE_DIR})
+-
+-target_link_libraries(mmcif-tests PUBLIC ${MMDB2_LIBRARY})
+-
+-set_target_properties(cootapi PROPERTIES INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+-
+-set_target_properties(cootapi PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
+-
+-set_target_properties(coot_headless_api PROPERTIES INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+-
+-set_target_properties(coot_headless_api PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
+-
+-install(TARGETS cootmoleculestotriangles cootapi)
+-
+-install(FILES standard-residues.pdb  DESTINATION share/coot)
+-
+-install(FILES data/syminfo.lib       DESTINATION share/coot/data)
+-
+-install(DIRECTORY rama-data          DESTINATION share/coot)
+-
+-install(DIRECTORY data/metal         DESTINATION share/coot/data)
+-
+-install(DIRECTORY data/cho-acedrg    DESTINATION share/coot/data)
+-
+-install(DIRECTORY data/cho-models    DESTINATION share/coot/data)
+-
+-install(DIRECTORY data/cho-links     DESTINATION share/coot/data)
+-
+-install(DIRECTORY data/pdb-templates DESTINATION share/coot/data)
++if(NOT SKBUILD)
++  add_executable(coot-findligand ${coot_src}/ligand/find-ligand.cc)
++  add_executable(coot-findwaters ${coot_src}/ligand/find-waters.cc)
++  add_executable(coot-mini-rsr ${coot_src}/ideal/mini-rsr.cc)
++  add_executable(coot-res-tracer-libcootapi ${coot_src}/ligand/res-tracer.cc)
++  add_executable(test-molecules-container ${coot_src}/api/test-molecules-container.cc
++                                          ${coot_src}/api/filo-tests.cc
++                                          ${coot_src}/api/lucrezia-tests.cc)
++  add_executable(test-docking ${coot_src}/docking/test-docking.cc)
++  add_executable(mmcif-tests ${coot_src}/api/mmcif-tests-main.cc ${coot_src}/api/mmcif-tests.cc)
++
++  target_compile_features(coot-mini-rsr PRIVATE cxx_std_17)
++  target_compile_features(coot-res-tracer-libcootapi PRIVATE cxx_std_17)
++
++  target_include_directories(coot-findligand PRIVATE ${MMDB2_INCLUDE_DIR} ${CLIPPER-CORE_INCLUDE_DIR} ${coot_src})
++  target_include_directories(coot-findwaters PRIVATE ${MMDB2_INCLUDE_DIR} ${CLIPPER-CORE_INCLUDE_DIR} ${coot_src})
++  target_include_directories(coot-mini-rsr PRIVATE ${MMDB2_INCLUDE_DIR} ${coot_src} ${PNG_INCLUDE_DIR})
++  target_include_directories(coot-res-tracer-libcootapi PRIVATE ${MMDB2_INCLUDE_DIR} ${coot_src} ${PNG_INCLUDE_DIR})
++  target_include_directories(test-molecules-container PRIVATE ${coot_src} ${coot_src}/coords ${coot_src}/utils ${coot_src}/ccp4mg-utils ${coot_src}/ccp4mg-utils/util ${coot_src}/ccp4mg-utils/pygl ${MMDB2_INCLUDE_DIR}/include ${SSM_INCLUDE_DIR} ${CLIPPER-CORE_INCLUDE_DIR} ${CLIPPER-MMDB_INCLUDE_DIR} ${CLIPPER-CCP4_INCLUDE_DIR} ${FFTW2_INCLUDE_DIRS} ${RDKit_INCLUDE_DIRS} ${PNG_INCLUDE_DIR})
++  target_include_directories(test-docking PRIVATE ${coot_src} ${coot_src}/coords ${coot_src}/utils ${coot_src}/ccp4mg-utils ${coot_src}/ccp4mg-utils/util ${coot_src}/ccp4mg-utils/pygl ${MMDB2_INCLUDE_DIR} ${CLIPPER-CORE_INCLUDE_DIR} ${CLIPPER-CCP4_INCLUDE_DIR} ${GSL_INCLUDE_DIRS} ${GLM_INCLUDE_DIRS})
++  target_include_directories(mmcif-tests PRIVATE ${MMDB2_INCLUDE_DIR} ${CLIPPER-MMDB_INCLUDE_DIR})
++
++  target_link_libraries(coot-findligand PUBLIC cootapi ${CLIPPER-CORE_LIBRARY} ${CLIPPER-CCP4_LIBRARY} ${MMDB2_LIBRARY} Boost::thread Threads::Threads)
++  target_link_libraries(coot-findwaters PUBLIC cootapi ${CLIPPER-CORE_LIBRARY} ${CLIPPER-CCP4_LIBRARY} ${MMDB2_LIBRARY})
++  target_link_libraries(coot-mini-rsr PUBLIC cootapi ${CLIPPER-CORE_LIBRARY} ${CLIPPER-CCP4_LIBRARY} ${MMDB2_LIBRARY} Threads::Threads)
++  target_link_libraries(coot-res-tracer-libcootapi PUBLIC cootapi ${CLIPPER-CORE_LIBRARY} ${CLIPPER-CCP4_LIBRARY} ${MMDB2_LIBRARY} Threads::Threads)
++  target_link_libraries(test-molecules-container PUBLIC cootapi ${SSM_LIBRARY} ${CLIPPER-MINIMOL_LIBRARY} ${CLIPPER-MMDB_LIBRARY} ${CLIPPER-CIF_LIBRARY} ${CLIPPER-CORE_LIBRARY} ${CLIPPER-CCP4_LIBRARY} ${CLIPPER-CONTRIB_LIBRARY} ${FFTW2_LIBRARY} ${RFFTW2_LIBRARY} ${MMDB2_LIBRARY} ${CCP4C_LIBRARY} ${ZLIB_LIBRARIES} ${GSL_LIBRARIES} ${RDKit_libs_for_libcootapi} ${PNG_LIBRARY} gemmi::gemmi_cpp ${libdwarf} ${libelf} Threads::Threads)
++  target_link_libraries(test-docking PUBLIC cootapi ${CLIPPER-CORE_LIBRARY} ${CLIPPER-CCP4_LIBRARY} ${MMDB2_LIBRARY} ${GSL_LIBRARIES} glm::glm Threads::Threads)
++  target_link_libraries(mmcif-tests PUBLIC ${MMDB2_LIBRARY})
++endif()
+ 
+-install(DIRECTORY ${coot_src}/analysis     DESTINATION include/coot/analysis     FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/angles       DESTINATION include/coot/angles       FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/api          DESTINATION include/coot/api          FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/auxil        DESTINATION include/coot/auxil        FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/build        DESTINATION include/coot/build        FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/ccp4mg-utils DESTINATION include/coot/ccp4mg-utils FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/compat       DESTINATION include/coot/compat       FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/coot-utils   DESTINATION include/coot/coot-utils   FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/cootaneer    DESTINATION include/coot/cootaneer    FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/cootilus     DESTINATION include/coot/cootilus     FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/coords       DESTINATION include/coot/coords       FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/db-main      DESTINATION include/coot/db-main      FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/geometry     DESTINATION include/coot/geometry     FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/high-res     DESTINATION include/coot/high-res     FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/ideal        DESTINATION include/coot/ideal        FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/lidia-core   DESTINATION include/coot/lidia-core   FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/ligand       DESTINATION include/coot/ligand       FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/mini-mol     DESTINATION include/coot/mini-mol     FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/pli          DESTINATION include/coot/pli          FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/protein_db   DESTINATION include/coot/protein_db   FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/pyrogen      DESTINATION include/coot/pyrogen      FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/skeleton     DESTINATION include/coot/skeleton     FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/utils        DESTINATION include/coot/utils        FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/density-contour      DESTINATION include/coot/density-contour      FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/MoleculesToTriangles DESTINATION include/coot/MoleculesToTriangles FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++if(SKBUILD)
++  if(APPLE)
++    set(_skbuild_rpath "@loader_path")
++  else()
++    set(_skbuild_rpath "$ORIGIN")
++  endif()
++  set_target_properties(cootapi PROPERTIES
++    INSTALL_RPATH "${_skbuild_rpath}"
++    INSTALL_RPATH_USE_LINK_PATH TRUE
++  )
++  set_target_properties(coot_headless_api PROPERTIES
++    PREFIX ""
++    OUTPUT_NAME "coot_headless_api"
++    INSTALL_RPATH "${_skbuild_rpath}"
++    INSTALL_RPATH_USE_LINK_PATH TRUE
++  )
++else()
++  set_target_properties(cootapi PROPERTIES INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
++  set_target_properties(cootapi PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
++  set_target_properties(coot_headless_api PROPERTIES INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
++  set_target_properties(coot_headless_api PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
++endif()
+ 
+-install(DIRECTORY ${CMAKE_SOURCE_DIR}/monomers DESTINATION share/coot/lib/data
+-        FILES_MATCHING PATTERN "*" PATTERN "*Makefile.*" EXCLUDE)
++if(SKBUILD)
++  install(TARGETS cootapi LIBRARY DESTINATION ${SKBUILD_PLATLIB_DIR})
++else()
++  install(TARGETS cootmoleculestotriangles cootapi)
++endif()
+ 
+-# Thanks Charles B.
+-install(TARGETS coot_headless_api DESTINATION ${Python_SITELIB_REL})
++if(NOT SKBUILD)
++  install(FILES standard-residues.pdb  DESTINATION share/coot)
++
++  install(FILES data/syminfo.lib       DESTINATION share/coot/data)
++
++  install(DIRECTORY rama-data          DESTINATION share/coot)
++
++  install(DIRECTORY data/metal         DESTINATION share/coot/data)
++
++  install(DIRECTORY data/cho-acedrg    DESTINATION share/coot/data)
++
++  install(DIRECTORY data/cho-models    DESTINATION share/coot/data)
++
++  install(DIRECTORY data/cho-links     DESTINATION share/coot/data)
++
++  install(DIRECTORY data/pdb-templates DESTINATION share/coot/data)
++
++  install(DIRECTORY ${coot_src}/analysis     DESTINATION include/coot/analysis     FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++  install(DIRECTORY ${coot_src}/angles       DESTINATION include/coot/angles       FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++  install(DIRECTORY ${coot_src}/api          DESTINATION include/coot/api          FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++  install(DIRECTORY ${coot_src}/auxil        DESTINATION include/coot/auxil        FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++  install(DIRECTORY ${coot_src}/build        DESTINATION include/coot/build        FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++  install(DIRECTORY ${coot_src}/ccp4mg-utils DESTINATION include/coot/ccp4mg-utils FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++  install(DIRECTORY ${coot_src}/compat       DESTINATION include/coot/compat       FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++  install(DIRECTORY ${coot_src}/coot-utils   DESTINATION include/coot/coot-utils   FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++  install(DIRECTORY ${coot_src}/cootaneer    DESTINATION include/coot/cootaneer    FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++  install(DIRECTORY ${coot_src}/cootilus     DESTINATION include/coot/cootilus     FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++  install(DIRECTORY ${coot_src}/coords       DESTINATION include/coot/coords       FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++  install(DIRECTORY ${coot_src}/db-main      DESTINATION include/coot/db-main      FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++  install(DIRECTORY ${coot_src}/geometry     DESTINATION include/coot/geometry     FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++  install(DIRECTORY ${coot_src}/high-res     DESTINATION include/coot/high-res     FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++  install(DIRECTORY ${coot_src}/ideal        DESTINATION include/coot/ideal        FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++  install(DIRECTORY ${coot_src}/lidia-core   DESTINATION include/coot/lidia-core   FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++  install(DIRECTORY ${coot_src}/ligand       DESTINATION include/coot/ligand       FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++  install(DIRECTORY ${coot_src}/mini-mol     DESTINATION include/coot/mini-mol     FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++  install(DIRECTORY ${coot_src}/pli          DESTINATION include/coot/pli          FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++  install(DIRECTORY ${coot_src}/protein_db   DESTINATION include/coot/protein_db   FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++  install(DIRECTORY ${coot_src}/pyrogen      DESTINATION include/coot/pyrogen      FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++  install(DIRECTORY ${coot_src}/skeleton     DESTINATION include/coot/skeleton     FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++  install(DIRECTORY ${coot_src}/utils        DESTINATION include/coot/utils        FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++  install(DIRECTORY ${coot_src}/density-contour      DESTINATION include/coot/density-contour      FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++  install(DIRECTORY ${coot_src}/MoleculesToTriangles DESTINATION include/coot/MoleculesToTriangles FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++
++  install(DIRECTORY ${CMAKE_SOURCE_DIR}/monomers DESTINATION share/coot/lib/data
++          FILES_MATCHING PATTERN "*" PATTERN "*Makefile.*" EXCLUDE)
++endif()
+ 
+-install(TARGETS coot_headless_api DESTINATION lib)
++if(SKBUILD)
++  install(TARGETS coot_headless_api LIBRARY DESTINATION ${SKBUILD_PLATLIB_DIR})
++else()
++  # Thanks Charles B.
++  install(TARGETS coot_headless_api DESTINATION ${Python_SITELIB_REL})
++  install(TARGETS coot_headless_api DESTINATION lib)
++endif()
+ 
+ # thanks merkys
+ set_target_properties(cootapi PROPERTIES SOVERSION 1.2)
+-set_target_properties(cootmoleculestotriangles PROPERTIES SOVERSION 1.2)
++if(NOT SKBUILD)
++  set_target_properties(cootmoleculestotriangles PROPERTIES SOVERSION 1.2)
++endif()
