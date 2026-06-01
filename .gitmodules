@@ -1,0 +1,3 @@
+[submodule "coot"]
+	path = coot
+	url = https://github.com/pemsley/coot
