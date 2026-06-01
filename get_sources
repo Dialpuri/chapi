@@ -1,3 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
 # Apply coot CMakeLists patch if not already applied (idempotent).
 if ! git -C coot apply --check --reverse ../patches/coot-cmakelists.patch 2>/dev/null; then
     git -C coot apply ../patches/coot-cmakelists.patch
@@ -105,7 +108,10 @@ else
     echo "Unpacking fftw-$fftw3_release"
     tar xf fftw-$fftw3_release.tar.gz
     mv fftw-$fftw3_release fftw3
-    git apply ../patches/fftw3-*.patch
+    if ! git apply --verbose ../patches/fftw3-*.patch; then
+        echo "ERROR: fftw3 patch failed to apply" >&2
+        exit 1
+    fi
 fi
 echo
 
