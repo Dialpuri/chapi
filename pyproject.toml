@@ -25,7 +25,7 @@ wheel.packages = []
 [tool.cibuildwheel]
 build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
 skip = "*-musllinux*"
-build-frontend = "build[uv]"
+build-frontend = "build"
 
 [tool.cibuildwheel.linux]
 manylinux-x86_64-image = "quay.io/pypa/manylinux_2_39_x86_64:latest"
