@@ -108,10 +108,14 @@ else
     echo "Unpacking fftw-$fftw3_release"
     tar xf fftw-$fftw3_release.tar.gz
     mv fftw-$fftw3_release fftw3
-    if ! git apply --verbose ../patches/fftw3-*.patch; then
-        echo "ERROR: fftw3 patch failed to apply" >&2
-        exit 1
-    fi
+fi
+
+# Force the cmake_minimum_required bump regardless of patch state.
+# (Works on both GNU sed and BSD/macOS sed via -i'' backup-empty form.)
+if [ -f fftw3/CMakeLists.txt ]; then
+    sed -i.bak -E 's/^cmake_minimum_required *\( *VERSION *[0-9.]+ *\)/cmake_minimum_required(VERSION 3.13)/' fftw3/CMakeLists.txt
+    rm -f fftw3/CMakeLists.txt.bak
+    head -1 fftw3/CMakeLists.txt
 fi
 echo
 
