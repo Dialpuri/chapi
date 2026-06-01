@@ -49,7 +49,9 @@ CMAKE_BUILD_PARALLEL_LEVEL = "6"
 
 [tool.cibuildwheel.macos]
 before-all = [
-    "brew install gsl boost libpng rdkit",
+    "brew install gsl boost libpng rdkit expat",
+    # Homebrew's rdkit cmake config references a non-existent libexpat.a; redirect to the dylib.
+    "BREW_PREFIX=$(brew --prefix) && sed -i.bak \"s|${BREW_PREFIX}/lib/libexpat.a|${BREW_PREFIX}/lib/libexpat.dylib|g\" ${BREW_PREFIX}/lib/cmake/rdkit/rdkit-targets.cmake",
     "bash ./get_sources",
 ]
 archs = ["auto"]
