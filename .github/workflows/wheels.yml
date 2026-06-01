@@ -5,6 +5,16 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      upload_target:
+        description: "Where to upload built wheels"
+        required: true
+        default: "none"
+        type: choice
+        options:
+          - none
+          - testpypi
+          - pypi
 
 jobs:
   build_wheels:
@@ -20,7 +30,7 @@ jobs:
           submodules: recursive
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.21
+        uses: pypa/cibuildwheel@v3.0.0
         env:
           CIBW_BUILD_VERBOSITY: 1
 
@@ -29,10 +39,30 @@ jobs:
           name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
           path: ./wheelhouse/*.whl
 
+  upload_testpypi:
+    needs: build_wheels
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.upload_target == 'testpypi'
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/coot_headless_api
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cibw-wheels-*
+          merge-multiple: true
+          path: dist
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
   upload_pypi:
     needs: build_wheels
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && inputs.upload_target == 'pypi')
     environment:
       name: pypi
       url: https://pypi.org/p/coot_headless_api

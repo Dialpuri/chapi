@@ -1,6 +1,6 @@
 project(rfftw)
 
-add_library(rfftw STATIC 
+add_library(rfftw OBJECT
 ${WRK_DIR}/checkout/fftw-2.1.5/rfftw/fcr_1.c
 ${WRK_DIR}/checkout/fftw-2.1.5/rfftw/fcr_10.c
 ${WRK_DIR}/checkout/fftw-2.1.5/rfftw/fcr_11.c
@@ -78,7 +78,9 @@ ${WRK_DIR}/checkout/fftw-2.1.5/rfftw/rfftw.h
 target_compile_options(rfftw PUBLIC "-DFFTW_ENABLE_FLOAT")
 set_target_properties(rfftw PROPERTIES PUBLIC_HEADER "${rfftw_HEADERS}")
 
+if(NOT SKBUILD)
 install(TARGETS rfftw
 LIBRARY DESTINATION lib
 PUBLIC_HEADER DESTINATION include/rfftw
 )
+endif()

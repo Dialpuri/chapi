@@ -1,6 +1,6 @@
 project(fftw)
 
-add_library(fftw STATIC 
+add_library(fftw OBJECT
 ${WRK_DIR}/checkout/fftw-2.1.5/fftw/config.c
 ${WRK_DIR}/checkout/fftw-2.1.5/fftw/executor.c
 ${WRK_DIR}/checkout/fftw-2.1.5/fftw/fftwf77.c
@@ -91,7 +91,9 @@ ${WRK_DIR}/checkout/fftw-2.1.5/fftw/config.h
 target_compile_options(fftw PUBLIC "-DFFTW_ENABLE_FLOAT")
 set_target_properties(fftw PROPERTIES PUBLIC_HEADER "${fftw_HEADERS}")
 
+if(NOT SKBUILD)
 install(TARGETS fftw
 LIBRARY DESTINATION lib
 PUBLIC_HEADER DESTINATION include/fftw
 )
+endif()
