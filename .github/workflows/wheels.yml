@@ -3,7 +3,7 @@ name: Build wheels
 on:
   push:
     tags:
-      - "v*"
+    - "v*"
   workflow_dispatch:
     inputs:
       upload_target:
@@ -12,9 +12,9 @@ on:
         default: "none"
         type: choice
         options:
-          - none
-          - testpypi
-          - pypi
+        - none
+        - testpypi
+        - pypi
 
 jobs:
   build_wheels:
@@ -23,22 +23,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-13, macos-latest]
-
+        os: [ macos-latest ]
+    # ubuntu-latest, macos-13,
     steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
-      - name: Build wheels
-        uses: pypa/cibuildwheel@v3.0.0
-        env:
-          CIBW_BUILD_VERBOSITY: 1
+    - name: Build wheels
+      uses: pypa/cibuildwheel@v3.0.0
+      env:
+        CIBW_BUILD_VERBOSITY: 1
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
-          path: ./wheelhouse/*.whl
+    - uses: actions/upload-artifact@v4
+      with:
+        name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
+        path: ./wheelhouse/*.whl
 
   upload_testpypi:
     needs: build_wheels
@@ -50,15 +50,15 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: cibw-wheels-*
-          merge-multiple: true
-          path: dist
+    - uses: actions/download-artifact@v4
+      with:
+        pattern: cibw-wheels-*
+        merge-multiple: true
+        path: dist
 
-      - uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
+    - uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        repository-url: https://test.pypi.org/legacy/
 
   upload_pypi:
     needs: build_wheels
@@ -70,10 +70,10 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: cibw-wheels-*
-          merge-multiple: true
-          path: dist
+    - uses: actions/download-artifact@v4
+      with:
+        pattern: cibw-wheels-*
+        merge-multiple: true
+        path: dist
 
-      - uses: pypa/gh-action-pypi-publish@release/v1
+    - uses: pypa/gh-action-pypi-publish@release/v1
