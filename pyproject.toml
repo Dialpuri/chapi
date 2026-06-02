@@ -7,7 +7,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "coot_headless_api"
-version = "1.3.1-rc2"
+version = "1.3.1-rc3"
 description = "Headless API for Coot"
 authors = [{name = "Jordan Dialpuri", email = "jdialpuri@mrclmb.ac.uk"}, {name = "Lucrezia Catapano", email = "lucrezia@mrclmb.ac.uk"}, {name = "Paul Emsley", email = "pemsley@mrclmb.ac.uk"}]
 license = {text = "GPLv3"}
@@ -22,7 +22,7 @@ cmake.targets = ["coot_headless_api", "coot_headless_api_ext_stub"]
 wheel.packages = []
 
 [tool.cibuildwheel]
-build = "cp313-*"
+build = "cp310-* cp311-* cp312-* cp313-*"
 skip = "*-musllinux*"
 build-frontend = "build"
 
@@ -44,7 +44,6 @@ CMAKE_PREFIX_PATH = "/opt/rdkit"
 CXXFLAGS = "-I/opt/rdkit/include -fPIC"
 CFLAGS = "-I/opt/rdkit/include -fPIC"
 LDFLAGS = "-L/opt/rdkit/lib -Wl,-rpath,/opt/rdkit/lib"
-CMAKE_BUILD_PARALLEL_LEVEL = "6"
 
 [tool.cibuildwheel.macos]
 before-all = [
