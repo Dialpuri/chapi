@@ -23,13 +23,13 @@ cmake.targets = ["coot_headless_api", "coot_headless_api_ext_stub"]
 wheel.packages = []
 
 [tool.cibuildwheel]
-build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
+build = "cp310-* cp311-* cp312-* cp313-* cp314-*"
 skip = "*-musllinux*"
 build-frontend = "build"
 
 [tool.cibuildwheel.linux]
-manylinux-x86_64-image = "quay.io/pypa/manylinux_2_34_x86_64:latest"
-manylinux-aarch64-image = "quay.io/pypa/manylinux_2_34_aarch64:latest"
+archs = ["aarch64"]
+manylinux-aarch64-image = "quay.io/pypa/manylinux_2_39_aarch64:latest"
 before-all = [
     "dnf install -y epel-release",
     "dnf install -y gsl-devel libpng-devel zlib-devel cmake ninja-build bzip2 elfutils-devel",
@@ -45,6 +45,7 @@ CMAKE_PREFIX_PATH = "/opt/rdkit"
 CXXFLAGS = "-I/opt/rdkit/include -fPIC"
 CFLAGS = "-I/opt/rdkit/include -fPIC"
 LDFLAGS = "-L/opt/rdkit/lib -Wl,-rpath,/opt/rdkit/lib"
+CMAKE_BUILD_PARALLEL_LEVEL = "6"
 
 [tool.cibuildwheel.macos]
 before-all = [
