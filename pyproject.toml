@@ -7,11 +7,17 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "coot_headless_api"
-version = "1.3.1-rc1"
+dynamic = ["version"]
 description = "Headless API for Coot"
-authors = [{name = "Jordan Dialpuri"}, {name = "Lucrezia Catapano"}, {name = "Paul Emsley", email = ""}]
+authors = [{name = "Jordan Dialpuri", email = "jdialpuri@mrclmb.ac.uk"}, {name = "Lucrezia Catapano", email = "lucrezia@mrclmb.ac.uk"}, {name = "Paul Emsley", email = "pemsley@mrclmb.ac.uk"}]
 license = {text = "GPLv3"}
 requires-python = ">=3.10"
+
+[tool.scikit-build.metadata.version]
+provider = "scikit_build_core.metadata.regex"
+input = "VERSION"
+regex = "(?P<value>.+)"
+
 [tool.scikit-build]
 cmake.source-dir = "coot"
 cmake.build-type = "Release"
@@ -32,7 +38,8 @@ before-all = [
     "dnf install -y epel-release",
     "dnf install -y gsl-devel libpng-devel zlib-devel cmake ninja-build bzip2 elfutils-devel boost-devel eigen3-devel cairo-devel doxygen",
     "bash ./get_sources",
-    "cd coot/api/doxy-sphinx && doxygen coot-api-dox.cfg"
+    "cd coot/api/doxy-sphinx && doxygen coot-api-dox.cfg && cd ../../../",
+    "python3 generate_docstring_cache.py"
 ]
 
 [tool.cibuildwheel.linux.environment]
@@ -46,7 +53,8 @@ CMAKE_BUILD_PARALLEL_LEVEL = "6"
 before-all = [
     "brew install gsl boost libpng rdkit expat doxygen",
     "bash ./get_sources",
-    "cd coot/api/doxy-sphinx && doxygen coot-api-dox.cfg"
+    "cd coot/api/doxy-sphinx && doxygen coot-api-dox.cfg && cd ../../../",
+    "python3 generate_docstring_cache.py"
 ]
 archs = ["auto"]
 environment = { CC = "clang", CXX = "clang++", MACOSX_DEPLOYMENT_TARGET = "15.0" }
