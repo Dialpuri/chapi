@@ -110,6 +110,35 @@ else
     mv fftw-$fftw3_release fftw3
 fi
 
+rdkit_release="Release_2024_09_5"
+if [[ "$(uname)" == "Linux" ]]; then
+    if [ -f "/opt/rdkit/lib/libRDKitRDGeneral.so" ]; then
+        echo "Found RDKit"
+    else
+        echo "Building RDKit ${rdkit_release} from source"
+        if [ ! -d "rdkit-${rdkit_release}" ]; then
+            curl -L "https://github.com/rdkit/rdkit/archive/refs/tags/${rdkit_release}.tar.gz" -o rdkit.tar.gz
+            tar xf rdkit.tar.gz
+            rm rdkit.tar.gz
+        fi
+        cmake -S "rdkit-${rdkit_release}" -B rdkit-build \
+            -GNinja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/opt/rdkit \
+            -DRDK_BUILD_PYTHON_WRAPPERS=OFF \
+            -DRDK_BUILD_CPP_TESTS=OFF \
+            -DRDK_BUILD_CAIRO_SUPPORT=ON \
+            -DRDK_INSTALL_INTREE=OFF \
+            -DRDK_BUILD_INCHI_SUPPORT=ON \
+            -DRDK_BUILD_AVALON_SUPPORT=ON \
+            -DRDK_BUILD_FREETYPE_SUPPORT=OFF
+        cmake --build rdkit-build -j$(nproc)
+        cmake --install rdkit-build
+        rm -rf rdkit-build
+        echo "RDKit installed to /opt/rdkit"
+    fi
+fi
+
 # RDKit's Homebrew cmake config references /opt/homebrew/lib/libexpat.a, but expat is keg-only
 # so that path doesn't exist. Create a symlink at the expected location.
 if [[ "$(uname)" == "Darwin" ]]; then

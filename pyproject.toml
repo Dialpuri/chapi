@@ -28,19 +28,15 @@ skip = "*-musllinux*"
 build-frontend = "build"
 
 [tool.cibuildwheel.linux]
-archs = ["aarch64"]
-manylinux-aarch64-image = "quay.io/pypa/manylinux_2_39_aarch64:latest"
+manylinux-x86_64-image = "quay.io/pypa/manylinux_2_34_x86_64:latest"
+manylinux-aarch64-image = "quay.io/pypa/manylinux_2_34_aarch64:latest"
 before-all = [
     "dnf install -y epel-release",
-    "dnf install -y gsl-devel libpng-devel zlib-devel cmake ninja-build bzip2 elfutils-devel",
-    "MAMBA_ARCH=$(uname -m | sed 's/x86_64/64/; s/aarch64/aarch64/') && curl -Ls https://micro.mamba.pm/api/micromamba/linux-${MAMBA_ARCH}/latest | tar -xvj bin/micromamba",
-    "./bin/micromamba create -y -p /opt/rdkit -c conda-forge rdkit librdkit-dev libboost-devel",
+    "dnf install -y gsl-devel libpng-devel zlib-devel cmake ninja-build bzip2 elfutils-devel boost-devel eigen3-devel cairo-devel",
     "bash ./get_sources",
 ]
 
 [tool.cibuildwheel.linux.environment]
-BOOST_ROOT = "/opt/rdkit"
-Boost_NO_SYSTEM_PATHS = "ON"
 CMAKE_PREFIX_PATH = "/opt/rdkit"
 CXXFLAGS = "-I/opt/rdkit/include -fPIC"
 CFLAGS = "-I/opt/rdkit/include -fPIC"
