@@ -45,7 +45,6 @@ CMAKE_PREFIX_PATH = "/opt/rdkit"
 CXXFLAGS = "-I/opt/rdkit/include -fPIC"
 CFLAGS = "-I/opt/rdkit/include -fPIC"
 LDFLAGS = "-L/opt/rdkit/lib -Wl,-rpath,/opt/rdkit/lib"
-CMAKE_BUILD_PARALLEL_LEVEL = "6"
 
 [tool.cibuildwheel.macos]
 before-all = [
@@ -53,5 +52,5 @@ before-all = [
     "bash ./get_sources",
 ]
 archs = ["auto"]
-environment = { CC = "clang", CXX = "clang++" }
+environment = { CC = "clang", CXX = "clang++", MACOSX_DEPLOYMENT_TARGET = "15.0" }
 
