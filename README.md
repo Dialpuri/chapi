@@ -11,7 +11,7 @@ The central class is `molecules_container_t`, which manages a collection of mole
 ## Installation
 
 ```bash
-pip install coot_headless_api
+pip install coot-headless-api
 ```
 
 ### Platform support
