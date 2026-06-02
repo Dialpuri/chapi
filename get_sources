@@ -19,7 +19,7 @@ else
     git clone https://ccp4forge.rc-harwell.ac.uk/ccp4/clipper.git clipper-gemmi
     cd clipper-gemmi
     git checkout gemmi
-    find . -maxdepth 1 ! -name 'clipper' ! -name '.' -exec rm -rf {} +
+    find . -maxdepth 1 ! -name 'clipper' ! -name '.' ! -name '.git' -exec rm -rf {} +
     git apply ../../patches/clipper-*.patch
     cd ..
     mv clipper-gemmi clipper
