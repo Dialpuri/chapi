@@ -29,6 +29,13 @@ jobs:
       with:
         submodules: recursive
 
+    - name: Cache RDKit (Linux)
+      if: runner.os == 'Linux'
+      uses: actions/cache@v4
+      with:
+        path: rdkit-install
+        key: rdkit-Release_2024_09_5-${{ matrix.os }}
+
     - name: Build wheels
       uses: pypa/cibuildwheel@v3.0.0
       env:

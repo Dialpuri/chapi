@@ -30,9 +30,11 @@ build-frontend = "build"
 manylinux-x86_64-image = "quay.io/pypa/manylinux_2_34_x86_64:latest"
 manylinux-aarch64-image = "quay.io/pypa/manylinux_2_34_aarch64:latest"
 before-all = [
+    "[ -d /project/rdkit-install ] && cp -r /project/rdkit-install /opt/rdkit && echo 'RDKit restored from cache' || true",
     "dnf install -y epel-release",
     "dnf install -y gsl-devel libpng-devel zlib-devel cmake ninja-build bzip2 elfutils-devel boost-devel eigen3-devel cairo-devel doxygen",
     "bash ./get_sources",
+    "[ -d /opt/rdkit ] && [ ! -d /project/rdkit-install ] && cp -r /opt/rdkit /project/rdkit-install && echo 'RDKit saved to cache dir' || true",
     "cd coot/api/doxy-sphinx && doxygen coot-api-dox.cfg && cd ../../../",
     "python3 generate_docstring_cache.py"
 ]
