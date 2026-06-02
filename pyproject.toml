@@ -23,7 +23,7 @@ cmake.targets = ["coot_headless_api", "coot_headless_api_ext_stub"]
 wheel.packages = []
 
 [tool.cibuildwheel]
-build = "cp310-* cp311-* cp312-* cp313-* cp314-*"
+build = "cp310-* cp311-* cp312-* cp313-*"
 skip = "*-musllinux*"
 build-frontend = "build"
 
