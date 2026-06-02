@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 34ca6dc8e..1859446f4 100644
+index 34ca6dc8e..ecc327d24 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -14,18 +14,24 @@ endif()
@@ -147,7 +147,7 @@ index 34ca6dc8e..1859446f4 100644
  endif()
  
  
-@@ -78,13 +176,17 @@ add_definitions(-DANALYSE_REFINEMENT_TIMING -DPACKAGE_VERSION="1.3.1"
+@@ -78,13 +176,22 @@ add_definitions(-DANALYSE_REFINEMENT_TIMING -DPACKAGE_VERSION="1.3.1"
  #
  add_definitions(-DMAKE_ENHANCED_LIGAND_TOOLS="1")
  message("-- Found ENHANCED_LIGAND_TOOLS setting - now requiring the RDKit")
@@ -161,13 +161,18 @@ index 34ca6dc8e..1859446f4 100644
    add_library(Boost::system INTERFACE IMPORTED)
  endif()
 -find_package(RDKit CONFIG COMPONENTS RDGeneral REQUIRED)
++if(NOT TARGET Cairo::Cairo)
++  find_package(PkgConfig REQUIRED)
++  pkg_check_modules(Cairo REQUIRED IMPORTED_TARGET cairo)
++  add_library(Cairo::Cairo ALIAS PkgConfig::Cairo)
++endif()
 +if(NOT RDKit_FOUND)
 +  find_package(RDKit CONFIG COMPONENTS RDGeneral REQUIRED)
 +endif()
  set(RDKit_libs_for_libcootapi RDKit::rdkit_base RDKit::Descriptors RDKit::DistGeomHelpers RDKit::PartialCharges RDKit::ForceFieldHelpers RDKit::ForceField RDKit::Optimizer RDKit::MolDraw2D  RDKit::MolChemicalFeatures)
  
  # we can be on Apple, and also have access to homebrew dwarf and elf - but this typically not the case
-@@ -108,7 +210,12 @@ endif()
+@@ -108,7 +215,12 @@ endif()
  
  #  pyrogen, auxil, goograph, src ignored.
  
@@ -181,7 +186,7 @@ index 34ca6dc8e..1859446f4 100644
              ${coot_src}/MoleculesToTriangles/CXXSurface/CXXBall.cpp
              ${coot_src}/MoleculesToTriangles/CXXSurface/CXXChargeTable.cpp
              ${coot_src}/MoleculesToTriangles/CXXSurface/CXXCircle.cpp
-@@ -529,8 +636,8 @@ if(MAEPARSER_LIBS)
+@@ -529,8 +641,8 @@ if(MAEPARSER_LIBS)
      target_link_libraries(cootapi PUBLIC ${MAEPARSER_LIBS})
  endif()
  
@@ -192,7 +197,7 @@ index 34ca6dc8e..1859446f4 100644
  
  # on macOS only?
  # target_compile_options(cootapi PRIVATE -fsanitize=address -fno-omit-frame-pointer)
-@@ -546,7 +653,11 @@ if (MAKE_COOT_HEADLESS_API_PYI)
+@@ -546,7 +658,11 @@ if (MAKE_COOT_HEADLESS_API_PYI)
      PYTHON_PATH $<TARGET_FILE_DIR:coot_headless_api>
      DEPENDS coot_headless_api
    )
@@ -205,7 +210,7 @@ index 34ca6dc8e..1859446f4 100644
    # MARKER_FILE py.typed
  endif()
  
-@@ -563,16 +674,24 @@ if (ENABLE_DWARF)
+@@ -563,16 +679,24 @@ if (ENABLE_DWARF)
  endif()
  
  target_include_directories(cootmoleculestotriangles PRIVATE ${MMDB2_INCLUDE_DIR}
@@ -233,7 +238,7 @@ index 34ca6dc8e..1859446f4 100644
  
  if (OSPRAY_PREFIX)
     target_link_libraries(cootapi PRIVATE ospray::ospray)
-@@ -592,125 +711,137 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+@@ -592,125 +716,137 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
    target_link_libraries(cootapi PRIVATE netapi32.lib)
  endif()
  
