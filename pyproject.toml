@@ -28,8 +28,8 @@ skip = "*-musllinux*"
 build-frontend = "build"
 
 [tool.cibuildwheel.linux]
-manylinux-x86_64-image = "quay.io/pypa/manylinux_2_39_x86_64:latest"
-manylinux-aarch64-image = "quay.io/pypa/manylinux_2_39_aarch64:latest"
+manylinux-x86_64-image = "quay.io/pypa/manylinux_2_28_x86_64:latest"
+manylinux-aarch64-image = "quay.io/pypa/manylinux_2_28_aarch64:latest"
 before-all = [
     "dnf install -y epel-release",
     "dnf install -y gsl-devel libpng-devel zlib-devel cmake ninja-build bzip2 elfutils-devel",
@@ -50,8 +50,6 @@ CMAKE_BUILD_PARALLEL_LEVEL = "6"
 [tool.cibuildwheel.macos]
 before-all = [
     "brew install gsl boost libpng rdkit expat",
-    # Homebrew's rdkit cmake config references libexpat.a; redirect to the keg-only dylib.
-    "BREW_PREFIX=$(brew --prefix) && EXPAT_LIB=$(brew --prefix expat)/lib/libexpat.dylib && sed -i.bak \"s|${BREW_PREFIX}/lib/libexpat.a|${EXPAT_LIB}|g\" ${BREW_PREFIX}/lib/cmake/rdkit/rdkit-targets.cmake",
     "bash ./get_sources",
 ]
 archs = ["auto"]
