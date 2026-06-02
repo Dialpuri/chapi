@@ -110,29 +110,15 @@ else
     mv fftw-$fftw3_release fftw3
 fi
 
-# Fix RDKit's Homebrew cmake config referencing libexpat.a, which doesn't exist when expat is keg-only.
+# RDKit's Homebrew cmake config references /opt/homebrew/lib/libexpat.a, but expat is keg-only
+# so that path doesn't exist. Create a symlink at the expected location.
 if [[ "$(uname)" == "Darwin" ]]; then
-    RDKIT_TARGETS="$(brew --prefix)/lib/cmake/rdkit/rdkit-targets.cmake"
-    echo "=== expat debug ==="
-    echo "RDKIT_TARGETS: $RDKIT_TARGETS"
-    ls -la "$(brew --prefix)/lib/libexpat"* 2>/dev/null || echo "No libexpat in brew prefix lib"
-    ls -la "$(brew --prefix expat)/lib/libexpat"* 2>/dev/null || echo "No libexpat in expat keg"
-    if [ -f "$RDKIT_TARGETS" ]; then
-        echo "rdkit-targets.cmake exists"
-        grep -i "expat" "$RDKIT_TARGETS" || echo "No expat reference found in rdkit-targets.cmake"
-        EXPAT_A="$(brew --prefix)/lib/libexpat.a"
-        EXPAT_DYLIB="$(brew --prefix expat)/lib/libexpat.dylib"
-        if grep -q "$EXPAT_A" "$RDKIT_TARGETS" && [ ! -f "$EXPAT_A" ]; then
-            sed -i.bak "s|${EXPAT_A}|${EXPAT_DYLIB}|g" "$RDKIT_TARGETS"
-            rm -f "${RDKIT_TARGETS}.bak"
-            echo "Patched RDKit expat: libexpat.a -> libexpat.dylib"
-        else
-            echo "No patch needed (file exists or reference not found)"
-        fi
-    else
-        echo "rdkit-targets.cmake not found at $RDKIT_TARGETS"
+    EXPAT_A="$(brew --prefix)/lib/libexpat.a"
+    EXPAT_KEG_A="$(brew --prefix expat)/lib/libexpat.a"
+    if [ ! -f "$EXPAT_A" ] && [ -f "$EXPAT_KEG_A" ]; then
+        ln -sf "$EXPAT_KEG_A" "$EXPAT_A"
+        echo "Symlinked libexpat.a: $EXPAT_A -> $EXPAT_KEG_A"
     fi
-    echo "==================="
 fi
 
 # Force the cmake_minimum_required bump regardless of patch state.
