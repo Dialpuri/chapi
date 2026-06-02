@@ -36,5 +36,3 @@ To get started, take a look at the [coot-headless-api documentation](https://www
 ## License
 
 GPLv3 — see [Coot's licence](https://github.com/pemsley/coot/blob/main/COPYING) for details.
-
-cp310-* cp311-* cp312-* 
