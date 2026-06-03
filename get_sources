@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Apply coot patches if not already applied (idempotent).
-for patch in coot-cmakelists.patch coot-nanobind-docstrings.patch; do
+for patch in coot-cmakelists.patch; do
     if ! git -C coot apply --check --reverse "../patches/$patch" 2>/dev/null; then
         git -C coot apply "../patches/$patch"
         echo "Applied $patch"
