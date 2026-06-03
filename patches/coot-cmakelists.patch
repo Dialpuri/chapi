@@ -1,8 +1,8 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 34ca6dc8e..75d85340c 100644
+index c8e2321b8..4d6bbc6c3 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -14,18 +14,24 @@ endif()
+@@ -14,18 +14,22 @@ endif()
  # Without RDKit, Coot currently needs C++17
  set(CMAKE_CXX_STANDARD 20)
  
@@ -10,37 +10,45 @@ index 34ca6dc8e..75d85340c 100644
 -else()
 -   find_package(CCP4 REQUIRED mmdb2 ssm clipper-core clipper-mmdb clipper-ccp4 clipper-contrib clipper-minimol clipper-cif)
 -endif(APPLE)
++# CCP4/GEMMI/glm are guarded by `if(NOT SKBUILD)`: in a wheel build these are
++# built in-tree via add_subdirectory() below instead of being discovered here.
 +if(NOT SKBUILD)
 +  if (APPLE)
 +  else()
 +    find_package(CCP4 REQUIRED mmdb2 ssm clipper-core clipper-mmdb clipper-ccp4 clipper-contrib clipper-minimol clipper-cif)
 +  endif(APPLE)
++  find_package(GEMMI REQUIRED)
++  find_package(glm REQUIRED)
 +endif()
  
  find_package(BLAS)
  find_package(GSL REQUIRED)
  find_package(PNG REQUIRED)
 -find_package(GEMMI REQUIRED)
-+if(NOT SKBUILD)
-+  find_package(GEMMI REQUIRED)
-+endif()
  find_package(Threads REQUIRED)
  find_package(Boost COMPONENTS iostreams regex thread serialization REQUIRED)
 -find_package(glm REQUIRED)
-+if(NOT SKBUILD)
-+  find_package(glm REQUIRED)
-+endif()
+ find_package(Doxygen REQUIRED)
  
  set(THREADS_PREFER_PTHREAD_FLAG ON)
- 
-@@ -43,6 +49,96 @@ if(NOT nanobind_DIR)
+@@ -44,6 +48,103 @@ if(NOT nanobind_DIR)
  endif()
  find_package(nanobind CONFIG REQUIRED)
  
++# --- Python wheel build (scikit-build-core) ----------------------------------
++# When SKBUILD is set we are being built as a relocatable Python wheel rather
++# than a system install. The non-system dependencies (mmdb2, ccp4, clipper,
++# fftw, ssm, gemmi) are not discovered with find_package(); instead they are
++# built from sibling source trees checked out next to this repo and added here
++# with add_subdirectory(). The remaining find_package() calls above are guarded
++# with `if(NOT SKBUILD)` for the same reason. RDKit is provided either by a
++# conda-forge tree at /opt/rdkit (Linux cibuildwheel, no cmake config) or by a
++# normal find_package() later on.
 +if(SKBUILD)
-+  set(WRK_DIR    "${CMAKE_CURRENT_SOURCE_DIR}/..")
++  set(WRK_DIR      "${CMAKE_CURRENT_SOURCE_DIR}/..")
 +  set(CHECKOUT_DIR "${WRK_DIR}/checkout")
 +
++  # Build the vendored dependencies from their sibling source trees.
 +  add_subdirectory(${WRK_DIR}/fftw              ${CMAKE_BINARY_DIR}/fftw)
 +  add_subdirectory(${WRK_DIR}/rfftw             ${CMAKE_BINARY_DIR}/rfftw)
 +  add_subdirectory(${WRK_DIR}/fftw3             ${CMAKE_BINARY_DIR}/fftw3)
@@ -76,13 +84,10 @@ index 34ca6dc8e..75d85340c 100644
 +  # Include directories from the checked-out sources
 +  set(MMDB2_INCLUDE_DIR           "${CHECKOUT_DIR}/mmdb2")
 +  set(SSM_INCLUDE_DIR             "${CHECKOUT_DIR}/ssm")
-+  set(CLIPPER-CORE_INCLUDE_DIR    "${CHECKOUT_DIR}/clipper")
-+  set(CLIPPER-MMDB_INCLUDE_DIR    "${CHECKOUT_DIR}/clipper")
-+  set(CLIPPER-CCP4_INCLUDE_DIR    "${CHECKOUT_DIR}/clipper")
-+  set(CLIPPER-MINIMOL_INCLUDE_DIR "${CHECKOUT_DIR}/clipper")
-+  set(CLIPPER-CONTRIB_INCLUDE_DIR "${CHECKOUT_DIR}/clipper")
-+  set(CLIPPER-CIF_INCLUDE_DIR     "${CHECKOUT_DIR}/clipper")
-+  set(CLIPPER-GEMMI_INCLUDE_DIR   "${CHECKOUT_DIR}/clipper")
++  # Every clipper component is included from the same source root.
++  foreach(_clipper_component CORE MMDB CCP4 MINIMOL CONTRIB CIF GEMMI)
++    set(CLIPPER-${_clipper_component}_INCLUDE_DIR "${CHECKOUT_DIR}/clipper")
++  endforeach()
 +  set(FFTW2_INCLUDE_DIRS          "${CHECKOUT_DIR}/fftw-2.1.5/fftw")
 +  set(RFFTW2_INCLUDE_DIRS         "${CHECKOUT_DIR}/fftw-2.1.5/rfftw")
 +  set(GEMMI_INCLUDE_DIR           "${CHECKOUT_DIR}/gemmi/include")
@@ -130,7 +135,7 @@ index 34ca6dc8e..75d85340c 100644
  # only via homebrew on macOS (not tried to compile them myself) - see below also though.
  if (APPLE)
  else()
-@@ -60,10 +156,12 @@ endif(WIN32)
+@@ -61,10 +162,12 @@ endif(WIN32)
  # - If the user set CMAKE_INSTALL_PREFIX explicitly, install relative to it.
  # - Otherwise (default /usr/local), install directly to Python_SITELIB so that
  #   venv builds land inside the venv rather than in /usr/local.
@@ -147,7 +152,7 @@ index 34ca6dc8e..75d85340c 100644
  endif()
  
  
-@@ -78,13 +176,22 @@ add_definitions(-DANALYSE_REFINEMENT_TIMING -DPACKAGE_VERSION="1.3.1"
+@@ -79,13 +182,22 @@ add_definitions(-DANALYSE_REFINEMENT_TIMING -DPACKAGE_VERSION="1.3.1"
  #
  add_definitions(-DMAKE_ENHANCED_LIGAND_TOOLS="1")
  message("-- Found ENHANCED_LIGAND_TOOLS setting - now requiring the RDKit")
@@ -172,11 +177,13 @@ index 34ca6dc8e..75d85340c 100644
  set(RDKit_libs_for_libcootapi RDKit::rdkit_base RDKit::Descriptors RDKit::DistGeomHelpers RDKit::PartialCharges RDKit::ForceFieldHelpers RDKit::ForceField RDKit::Optimizer RDKit::MolDraw2D  RDKit::MolChemicalFeatures)
  
  # we can be on Apple, and also have access to homebrew dwarf and elf - but this typically not the case
-@@ -108,7 +215,12 @@ endif()
+@@ -109,7 +221,14 @@ endif()
  
  #  pyrogen, auxil, goograph, src ignored.
  
 -add_library(cootmoleculestotriangles SHARED
++# In a wheel build link this statically into the extension module so the wheel
++# is self-contained; a system install keeps it as a normal shared library.
 +if(SKBUILD)
 +  set(M2T_LIB_TYPE STATIC)
 +else()
@@ -186,31 +193,7 @@ index 34ca6dc8e..75d85340c 100644
              ${coot_src}/MoleculesToTriangles/CXXSurface/CXXBall.cpp
              ${coot_src}/MoleculesToTriangles/CXXSurface/CXXChargeTable.cpp
              ${coot_src}/MoleculesToTriangles/CXXSurface/CXXCircle.cpp
-@@ -529,8 +641,21 @@ if(MAEPARSER_LIBS)
-     target_link_libraries(cootapi PUBLIC ${MAEPARSER_LIBS})
- endif()
- 
--nanobind_add_module(coot_headless_api ${coot_src}/api/molecules-container-nanobind.cc
--                                      ${coot_src}/api/molecules-container-nanobind-functions.cc)
-+# molecules-container-docstrings-cache.cc is generated by
-+# api/generate_docstring_cache.py (run in pyproject.toml's before-all). If it has
-+# not been generated, emit an empty stub so the build still succeeds and the
-+# nanobind module falls back to parsing the Doxygen XML at runtime.
-+set(coot_docstrings_cache_cc ${coot_src}/api/molecules-container-docstrings-cache.cc)
-+if(NOT EXISTS ${coot_docstrings_cache_cc})
-+  file(WRITE ${coot_docstrings_cache_cc}
-+       "// Auto-generated stub - regenerate with api/generate_docstring_cache.py\n"
-+       "#include <string>\n#include <unordered_map>\n"
-+       "void fill_docstring_cache(std::unordered_map<std::string, std::string> &) {}\n")
-+endif()
-+
-+nanobind_add_module(coot_headless_api MODULE ${coot_src}/api/molecules-container-nanobind.cc
-+                                            ${coot_src}/api/molecules-container-nanobind-functions.cc
-+                                            ${coot_docstrings_cache_cc})
- 
- # on macOS only?
- # target_compile_options(cootapi PRIVATE -fsanitize=address -fno-omit-frame-pointer)
-@@ -546,7 +671,11 @@ if (MAKE_COOT_HEADLESS_API_PYI)
+@@ -586,7 +705,11 @@ if (MAKE_COOT_HEADLESS_API_PYI)
      PYTHON_PATH $<TARGET_FILE_DIR:coot_headless_api>
      DEPENDS coot_headless_api
    )
@@ -223,7 +206,7 @@ index 34ca6dc8e..75d85340c 100644
    # MARKER_FILE py.typed
  endif()
  
-@@ -563,16 +692,24 @@ if (ENABLE_DWARF)
+@@ -603,16 +726,24 @@ if (ENABLE_DWARF)
  endif()
  
  target_include_directories(cootmoleculestotriangles PRIVATE ${MMDB2_INCLUDE_DIR}
@@ -251,18 +234,10 @@ index 34ca6dc8e..75d85340c 100644
  
  if (OSPRAY_PREFIX)
     target_link_libraries(cootapi PRIVATE ospray::ospray)
-@@ -592,125 +729,137 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-   target_link_libraries(cootapi PRIVATE netapi32.lib)
- endif()
+@@ -656,117 +787,150 @@ target_include_directories(coot_headless_api PRIVATE ${coot_src} ${coot_src}/coo
+                                                      ${RDKit_INCLUDE_DIRS} ${GLM_INCLUDE_DIRS}
+                                                      ${GSL_INCLUDE_DIRS} ${PNG_PNG_INCLUDE_DIR})
  
--target_include_directories(coot_headless_api PRIVATE ${coot_src} ${coot_src}/coords ${coot_src}/utils ${coot_src}/ccp4mg-utils
--                                                     ${coot_src}/ccp4mg-utils/util ${coot_src}/ccp4mg-utils/pygl
--                                                     ${MMDB2_INCLUDE_DIR} ${SSM_INCLUDE_DIR} ${CLIPPER-CORE_INCLUDE_DIR}
--                                                     ${CLIPPER-MMDB_INCLUDE_DIR} ${CLIPPER-CCP4_INCLUDE_DIR}
--                                                     ${FFTW2_INCLUDE_DIRS}
--                                                     ${RDKit_INCLUDE_DIRS} ${GLM_INCLUDE_DIRS}
--                                                     ${GSL_INCLUDE_DIRS} ${PNG_PNG_INCLUDE_DIR})
--
 -add_executable(coot-findligand ${coot_src}/ligand/find-ligand.cc)
 -
 -add_executable(coot-findwaters ${coot_src}/ligand/find-waters.cc)
@@ -282,17 +257,7 @@ index 34ca6dc8e..75d85340c 100644
 -target_compile_features(coot-mini-rsr PRIVATE cxx_std_17)
 -
 -target_compile_features(coot-res-tracer-libcootapi PRIVATE cxx_std_17)
-+target_include_directories(coot_headless_api PRIVATE
-+  ${coot_src} ${coot_src}/coords ${coot_src}/utils ${coot_src}/ccp4mg-utils
-+  ${coot_src}/ccp4mg-utils/util ${coot_src}/ccp4mg-utils/pygl
-+  ${MMDB2_INCLUDE_DIR} ${SSM_INCLUDE_DIR}
-+  ${CLIPPER-CORE_INCLUDE_DIR} ${CLIPPER-MMDB_INCLUDE_DIR} ${CLIPPER-CCP4_INCLUDE_DIR}
-+  ${CLIPPER-MINIMOL_INCLUDE_DIR} ${CLIPPER-CONTRIB_INCLUDE_DIR} ${CLIPPER-CIF_INCLUDE_DIR}
-+  ${FFTW2_INCLUDE_DIRS} ${RFFTW2_INCLUDE_DIRS}
-+  ${GEMMI_INCLUDE_DIR} ${CLIPPER-GEMMI_INCLUDE_DIR}
-+  ${RDKit_INCLUDE_DIRS} ${GLM_INCLUDE_DIRS}
-+  ${GSL_INCLUDE_DIRS} ${PNG_PNG_INCLUDE_DIR})
- 
+-
  target_link_libraries(coot_headless_api PUBLIC cootapi  ${CLIPPER-CORE_LIBRARY} ${CLIPPER-CCP4_LIBRARY} ${MMDB2_LIBRARY}
                        ${RDKit_libs_for_libcootapi} ${libdwarf} ${libelf})
  
@@ -349,6 +314,8 @@ index 34ca6dc8e..75d85340c 100644
 -install(DIRECTORY data/cho-links     DESTINATION share/coot/data)
 -
 -install(DIRECTORY data/pdb-templates DESTINATION share/coot/data)
++# Command-line tools and test programs. They are not part of the Python wheel,
++# so they are only built for a normal system install.
 +if(NOT SKBUILD)
 +  add_executable(coot-findligand ${coot_src}/ligand/find-ligand.cc)
 +  add_executable(coot-findwaters ${coot_src}/ligand/find-waters.cc)
@@ -405,6 +372,9 @@ index 34ca6dc8e..75d85340c 100644
 -install(DIRECTORY ${coot_src}/utils        DESTINATION include/coot/utils        FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
 -install(DIRECTORY ${coot_src}/density-contour      DESTINATION include/coot/density-contour      FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
 -install(DIRECTORY ${coot_src}/MoleculesToTriangles DESTINATION include/coot/MoleculesToTriangles FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
++# Install RPATHs. In a wheel the shared libraries sit next to the extension
++# module, so use a loader-relative RPATH (@loader_path / $ORIGIN) to keep the
++# wheel relocatable; a system install points at the absolute lib directory.
 +if(SKBUILD)
 +  if(APPLE)
 +    set(_skbuild_rpath "@loader_path")
@@ -432,6 +402,25 @@ index 34ca6dc8e..75d85340c 100644
 -        FILES_MATCHING PATTERN "*" PATTERN "*Makefile.*" EXCLUDE)
 +if(SKBUILD)
 +  install(TARGETS cootapi LIBRARY DESTINATION ${SKBUILD_PLATLIB_DIR})
++
++  # Bundle the runtime data into the wheel, alongside the extension module in
++  # site-packages, under share/coot. At import time the module sets COOT_PREFIX
++  # to its own directory (see molecules-container-nanobind.cc), so
++  # coot::package_data_dir() resolves to this bundled share/coot.
++  #
++  # This mirrors the standard (non-SKBUILD) install layout below, minus the
++  # large rama-data tree (rotamer-probability tables are not bundled).
++  set(_skbuild_coot_share "${SKBUILD_PLATLIB_DIR}/share/coot")
++
++  install(FILES standard-residues.pdb  DESTINATION ${_skbuild_coot_share})
++  install(FILES data/syminfo.lib       DESTINATION ${_skbuild_coot_share}/data)
++  install(DIRECTORY data/metal         DESTINATION ${_skbuild_coot_share}/data)
++  install(DIRECTORY data/cho-acedrg    DESTINATION ${_skbuild_coot_share}/data)
++  install(DIRECTORY data/cho-models    DESTINATION ${_skbuild_coot_share}/data)
++  install(DIRECTORY data/cho-links     DESTINATION ${_skbuild_coot_share}/data)
++  install(DIRECTORY data/pdb-templates DESTINATION ${_skbuild_coot_share}/data)
++  install(DIRECTORY ${CMAKE_SOURCE_DIR}/monomers DESTINATION ${_skbuild_coot_share}/lib/data
++          FILES_MATCHING PATTERN "*" PATTERN "*Makefile.*" EXCLUDE)
 +else()
 +  install(TARGETS cootmoleculestotriangles cootapi)
 +endif()
