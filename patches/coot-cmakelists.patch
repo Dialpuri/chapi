@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index c8e2321b8..4d6bbc6c3 100644
+index c8e2321b8..a29461a50 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -14,18 +14,22 @@ endif()
@@ -31,7 +31,7 @@ index c8e2321b8..4d6bbc6c3 100644
  find_package(Doxygen REQUIRED)
  
  set(THREADS_PREFER_PTHREAD_FLAG ON)
-@@ -44,6 +48,103 @@ if(NOT nanobind_DIR)
+@@ -44,6 +48,109 @@ if(NOT nanobind_DIR)
  endif()
  find_package(nanobind CONFIG REQUIRED)
  
@@ -47,6 +47,12 @@ index c8e2321b8..4d6bbc6c3 100644
 +if(SKBUILD)
 +  set(WRK_DIR      "${CMAKE_CURRENT_SOURCE_DIR}/..")
 +  set(CHECKOUT_DIR "${WRK_DIR}/checkout")
++
++  # The wheel ships as a package directory (coot_headless_api/) containing the
++  # extension module, its shared libraries and the bundled share/coot data. A
++  # small __init__.py (in ../packaging) sets COOT_PREFIX to this directory at
++  # import time so coot::package_data_dir() finds the bundled data.
++  set(COOT_WHEEL_PACKAGE_DIR "${SKBUILD_PLATLIB_DIR}/coot_headless_api")
 +
 +  # Build the vendored dependencies from their sibling source trees.
 +  add_subdirectory(${WRK_DIR}/fftw              ${CMAKE_BINARY_DIR}/fftw)
@@ -135,7 +141,7 @@ index c8e2321b8..4d6bbc6c3 100644
  # only via homebrew on macOS (not tried to compile them myself) - see below also though.
  if (APPLE)
  else()
-@@ -61,10 +162,12 @@ endif(WIN32)
+@@ -61,10 +168,12 @@ endif(WIN32)
  # - If the user set CMAKE_INSTALL_PREFIX explicitly, install relative to it.
  # - Otherwise (default /usr/local), install directly to Python_SITELIB so that
  #   venv builds land inside the venv rather than in /usr/local.
@@ -152,7 +158,7 @@ index c8e2321b8..4d6bbc6c3 100644
  endif()
  
  
-@@ -79,13 +182,22 @@ add_definitions(-DANALYSE_REFINEMENT_TIMING -DPACKAGE_VERSION="1.3.1"
+@@ -79,13 +188,22 @@ add_definitions(-DANALYSE_REFINEMENT_TIMING -DPACKAGE_VERSION="1.3.1"
  #
  add_definitions(-DMAKE_ENHANCED_LIGAND_TOOLS="1")
  message("-- Found ENHANCED_LIGAND_TOOLS setting - now requiring the RDKit")
@@ -177,7 +183,7 @@ index c8e2321b8..4d6bbc6c3 100644
  set(RDKit_libs_for_libcootapi RDKit::rdkit_base RDKit::Descriptors RDKit::DistGeomHelpers RDKit::PartialCharges RDKit::ForceFieldHelpers RDKit::ForceField RDKit::Optimizer RDKit::MolDraw2D  RDKit::MolChemicalFeatures)
  
  # we can be on Apple, and also have access to homebrew dwarf and elf - but this typically not the case
-@@ -109,7 +221,14 @@ endif()
+@@ -109,7 +227,14 @@ endif()
  
  #  pyrogen, auxil, goograph, src ignored.
  
@@ -193,20 +199,20 @@ index c8e2321b8..4d6bbc6c3 100644
              ${coot_src}/MoleculesToTriangles/CXXSurface/CXXBall.cpp
              ${coot_src}/MoleculesToTriangles/CXXSurface/CXXChargeTable.cpp
              ${coot_src}/MoleculesToTriangles/CXXSurface/CXXCircle.cpp
-@@ -586,7 +705,11 @@ if (MAKE_COOT_HEADLESS_API_PYI)
+@@ -586,7 +711,11 @@ if (MAKE_COOT_HEADLESS_API_PYI)
      PYTHON_PATH $<TARGET_FILE_DIR:coot_headless_api>
      DEPENDS coot_headless_api
    )
 -  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/coot_headless_api.pyi DESTINATION ${Python_SITELIB_REL})
 +  if(SKBUILD)
-+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/coot_headless_api.pyi DESTINATION ${SKBUILD_PLATLIB_DIR})
++    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/coot_headless_api.pyi DESTINATION ${COOT_WHEEL_PACKAGE_DIR})
 +  else()
 +    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/coot_headless_api.pyi DESTINATION ${Python_SITELIB_REL})
 +  endif()
    # MARKER_FILE py.typed
  endif()
  
-@@ -603,16 +726,24 @@ if (ENABLE_DWARF)
+@@ -603,16 +732,24 @@ if (ENABLE_DWARF)
  endif()
  
  target_include_directories(cootmoleculestotriangles PRIVATE ${MMDB2_INCLUDE_DIR}
@@ -234,7 +240,7 @@ index c8e2321b8..4d6bbc6c3 100644
  
  if (OSPRAY_PREFIX)
     target_link_libraries(cootapi PRIVATE ospray::ospray)
-@@ -656,117 +787,150 @@ target_include_directories(coot_headless_api PRIVATE ${coot_src} ${coot_src}/coo
+@@ -656,117 +793,154 @@ target_include_directories(coot_headless_api PRIVATE ${coot_src} ${coot_src}/coo
                                                       ${RDKit_INCLUDE_DIRS} ${GLM_INCLUDE_DIRS}
                                                       ${GSL_INCLUDE_DIRS} ${PNG_PNG_INCLUDE_DIR})
  
@@ -401,16 +407,20 @@ index c8e2321b8..4d6bbc6c3 100644
 -install(DIRECTORY ${CMAKE_SOURCE_DIR}/monomers DESTINATION share/coot/lib/data
 -        FILES_MATCHING PATTERN "*" PATTERN "*Makefile.*" EXCLUDE)
 +if(SKBUILD)
-+  install(TARGETS cootapi LIBRARY DESTINATION ${SKBUILD_PLATLIB_DIR})
++  install(TARGETS cootapi LIBRARY DESTINATION ${COOT_WHEEL_PACKAGE_DIR})
 +
-+  # Bundle the runtime data into the wheel, alongside the extension module in
-+  # site-packages, under share/coot. At import time the module sets COOT_PREFIX
-+  # to its own directory (see molecules-container-nanobind.cc), so
++  # The package __init__.py wrapper (sets COOT_PREFIX before importing the
++  # extension - see ../packaging/coot_headless_api/__init__.py).
++  install(FILES ${WRK_DIR}/packaging/coot_headless_api/__init__.py
++          DESTINATION ${COOT_WHEEL_PACKAGE_DIR})
++
++  # Bundle the runtime data into the wheel, inside the package under share/coot.
++  # At import time __init__.py sets COOT_PREFIX to the package directory, so
 +  # coot::package_data_dir() resolves to this bundled share/coot.
 +  #
 +  # This mirrors the standard (non-SKBUILD) install layout below, minus the
 +  # large rama-data tree (rotamer-probability tables are not bundled).
-+  set(_skbuild_coot_share "${SKBUILD_PLATLIB_DIR}/share/coot")
++  set(_skbuild_coot_share "${COOT_WHEEL_PACKAGE_DIR}/share/coot")
 +
 +  install(FILES standard-residues.pdb  DESTINATION ${_skbuild_coot_share})
 +  install(FILES data/syminfo.lib       DESTINATION ${_skbuild_coot_share}/data)
@@ -476,7 +486,7 @@ index c8e2321b8..4d6bbc6c3 100644
  
 -install(TARGETS coot_headless_api DESTINATION lib)
 +if(SKBUILD)
-+  install(TARGETS coot_headless_api LIBRARY DESTINATION ${SKBUILD_PLATLIB_DIR})
++  install(TARGETS coot_headless_api LIBRARY DESTINATION ${COOT_WHEEL_PACKAGE_DIR})
 +else()
 +  # Thanks Charles B.
 +  install(TARGETS coot_headless_api DESTINATION ${Python_SITELIB_REL})
