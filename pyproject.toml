@@ -53,6 +53,6 @@ before-all = [
     "cd coot/api/doxy-sphinx && doxygen coot-api-dox.cfg && cd ../../../",
     "python3 generate_docstring_cache.py"
 ]
-archs = ["x86_64", "arm64"]
+archs = ["auto"]
 environment = { CC = "clang", CXX = "clang++", MACOSX_DEPLOYMENT_TARGET = "15.0" }
 
