@@ -29,18 +29,30 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Cache RDKit (Linux)
+    # Restore/save are split (instead of actions/cache@v4) so the RDKit build
+    # is cached even when a later wheel-build step fails. The unified action
+    # only saves on job success, and `save-always` is deprecated/non-functional.
+    - name: Restore RDKit cache (Linux)
+      id: rdkit-cache
       if: runner.os == 'Linux'
-      uses: actions/cache@v4
+      uses: actions/cache/restore@v4
       with:
         path: rdkit-install
         key: rdkit-Release_2024_09_5-${{ matrix.os }}
-        save-always: true
 
     - name: Build wheels
       uses: pypa/cibuildwheel@v3.0.0
       env:
         CIBW_BUILD_VERBOSITY: 1
+
+    # Save RDKit even if the build failed (always()), but only on a cache miss:
+    # before-all builds RDKit into /opt/rdkit and copies it to ./rdkit-install.
+    - name: Save RDKit cache (Linux)
+      if: always() && runner.os == 'Linux' && steps.rdkit-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: rdkit-install
+        key: rdkit-Release_2024_09_5-${{ matrix.os }}
 
     - uses: actions/upload-artifact@v4
       with:
