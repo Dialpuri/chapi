@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index c8e2321b8..a29461a50 100644
+index c8e2321b8..47f69d1b6 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -14,18 +14,22 @@ endif()
@@ -199,7 +199,66 @@ index c8e2321b8..a29461a50 100644
              ${coot_src}/MoleculesToTriangles/CXXSurface/CXXBall.cpp
              ${coot_src}/MoleculesToTriangles/CXXSurface/CXXChargeTable.cpp
              ${coot_src}/MoleculesToTriangles/CXXSurface/CXXCircle.cpp
-@@ -586,7 +711,11 @@ if (MAKE_COOT_HEADLESS_API_PYI)
+@@ -534,7 +659,7 @@ endif()
+ # Parse the doxygen XML at build time and generate a C++ source that embeds the
+ # docstrings into the module, so the documentation is available at runtime even
+ # when the source tree (and the doxygen XML) has been removed.
+-set(COOT_DOCSTRING_XML ${coot_src}/api/doxy-sphinx/xml/classmolecules__container__t.xml)
++set(COOT_DOCSTRING_XML ${CMAKE_CURRENT_BINARY_DIR}/xml/classmolecules__container__t.xml)
+ set(COOT_DOCSTRINGS_GENERATED ${CMAKE_CURRENT_BINARY_DIR}/coot-docstrings-generated.cc)
+ 
+ add_executable(coot-make-docstrings ${coot_src}/api/make-docstrings-source.cc
+@@ -543,30 +668,33 @@ add_executable(coot-make-docstrings ${coot_src}/api/make-docstrings-source.cc
+ target_include_directories(coot-make-docstrings PRIVATE ${coot_src} ${coot_src}/api ${coot_src}/coot-utils)
+ target_compile_features(coot-make-docstrings PRIVATE cxx_std_17)
+ 
+-# Only depend on the XML if it exists at configure time, so a fresh tree without
+-# doxygen output still configures and builds (with an empty docstring table).
+-if (EXISTS ${COOT_DOCSTRING_XML})
+-  set(COOT_DOCSTRING_XML_DEP ${COOT_DOCSTRING_XML})
+-else()
+-  set(COOT_DOCSTRING_XML_DEP "")
+-endif()
++# Step 1: produce the doxygen XML the extractor consumes, driven by CMake as a
++# build dependency (rather than out-of-band) so a clean build is self-contained.
++# coot-api-dox.cfg is a template whose INPUT paths use @CMAKE_CURRENT_SOURCE_DIR@,
++# so configure_file() substitutes them to absolute paths in a generated Doxyfile.
++# doxygen runs in the build dir, so its xml/ output stays out of the source tree.
++configure_file(
++  ${coot_src}/api/doxy-sphinx/coot-api-dox.cfg
++  ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
++  @ONLY)
++add_custom_command(
++  OUTPUT ${COOT_DOCSTRING_XML}
++  COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
++  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
++  DEPENDS ${coot_src}/api/doxy-sphinx/coot-api-dox.cfg
++  COMMENT "Generating doxygen XML for API docstrings"
++  VERBATIM)
+ 
++# Step 2: turn that XML into a C++ source that embeds the docstrings, so the
++# documentation is available at runtime even without the source tree.
+ add_custom_command(
+   OUTPUT ${COOT_DOCSTRINGS_GENERATED}
+   COMMAND coot-make-docstrings ${COOT_DOCSTRING_XML} ${COOT_DOCSTRINGS_GENERATED}
+-  DEPENDS coot-make-docstrings ${COOT_DOCSTRING_XML_DEP}
++  DEPENDS coot-make-docstrings ${COOT_DOCSTRING_XML}
+   COMMENT "Generating embedded API docstrings from doxygen XML"
+   VERBATIM)
+ # -----------------------------------------------------------------------------
+ 
+-configure_file(
+-        ${CMAKE_CURRENT_SOURCE_DIR}/api/doxy-sphinx/coot-api-dox.cfg
+-        ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
+-        @ONLY
+-)
+-
+-doxygen_add_docs(docs)
+-
+ nanobind_add_module(coot_headless_api ${coot_src}/api/molecules-container-nanobind.cc
+                                       ${coot_src}/api/molecules-container-nanobind-functions.cc
+                                       ${coot_src}/api/coot-docstring-extract.cc
+@@ -586,7 +714,11 @@ if (MAKE_COOT_HEADLESS_API_PYI)
      PYTHON_PATH $<TARGET_FILE_DIR:coot_headless_api>
      DEPENDS coot_headless_api
    )
@@ -212,7 +271,7 @@ index c8e2321b8..a29461a50 100644
    # MARKER_FILE py.typed
  endif()
  
-@@ -603,16 +732,24 @@ if (ENABLE_DWARF)
+@@ -603,16 +735,24 @@ if (ENABLE_DWARF)
  endif()
  
  target_include_directories(cootmoleculestotriangles PRIVATE ${MMDB2_INCLUDE_DIR}
@@ -240,7 +299,7 @@ index c8e2321b8..a29461a50 100644
  
  if (OSPRAY_PREFIX)
     target_link_libraries(cootapi PRIVATE ospray::ospray)
-@@ -656,117 +793,154 @@ target_include_directories(coot_headless_api PRIVATE ${coot_src} ${coot_src}/coo
+@@ -656,117 +796,154 @@ target_include_directories(coot_headless_api PRIVATE ${coot_src} ${coot_src}/coo
                                                       ${RDKit_INCLUDE_DIRS} ${GLM_INCLUDE_DIRS}
                                                       ${GSL_INCLUDE_DIRS} ${PNG_PNG_INCLUDE_DIR})
  

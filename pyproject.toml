@@ -37,7 +37,6 @@ before-all = [
     "dnf install -y gsl-devel libpng-devel zlib-devel cmake ninja-build bzip2 elfutils-devel boost-devel eigen3-devel cairo-devel doxygen",
     "bash ./get_sources",
     "[ -d /opt/rdkit ] && [ ! -d /project/rdkit-install ] && cp -r /opt/rdkit /project/rdkit-install && echo 'RDKit saved to cache dir' || true",
-    "cd coot/api/doxy-sphinx && doxygen coot-api-dox.cfg && cd ../../../",
 ]
 
 [tool.cibuildwheel.linux.environment]
@@ -50,7 +49,6 @@ LDFLAGS = "-L/opt/rdkit/lib -Wl,-rpath,/opt/rdkit/lib"
 before-all = [
     "brew install gsl boost libpng rdkit expat doxygen",
     "bash ./get_sources",
-    "cd coot/api/doxy-sphinx && doxygen coot-api-dox.cfg && cd ../../../",
 ]
 archs = ["auto"]
 environment = { CC = "clang", CXX = "clang++", MACOSX_DEPLOYMENT_TARGET = "15.0" }
