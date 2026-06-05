@@ -32,11 +32,11 @@ test-command = "python {project}/test/smoke_test.py"
 manylinux-x86_64-image = "quay.io/pypa/manylinux_2_34_x86_64:latest"
 manylinux-aarch64-image = "quay.io/pypa/manylinux_2_34_aarch64:latest"
 before-all = [
-    "[ -d /project/rdkit-install ] && cp -r /project/rdkit-install /opt/rdkit && echo 'RDKit restored from cache' || true",
+    "[ -d /host-rdkit-install/rdkit ] && cp -r /host-rdkit-install/rdkit /opt/rdkit && echo 'RDKit restored from cache' || true",
     "dnf install -y epel-release",
     "dnf install -y gsl-devel libpng-devel zlib-devel cmake ninja-build bzip2 elfutils-devel boost-devel eigen3-devel cairo-devel doxygen",
     "bash ./get_sources",
-    "[ -d /opt/rdkit ] && [ ! -d /project/rdkit-install ] && cp -r /opt/rdkit /project/rdkit-install && echo 'RDKit saved to cache dir' || true",
+    "[ -d /opt/rdkit ] && [ ! -d /host-rdkit-install/rdkit ] && cp -r /opt/rdkit /host-rdkit-install/rdkit && echo 'RDKit saved to cache dir' || true",
 ]
 
 [tool.cibuildwheel.linux.environment]

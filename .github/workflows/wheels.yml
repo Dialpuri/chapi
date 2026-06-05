@@ -40,9 +40,17 @@ jobs:
         path: rdkit-install
         key: rdkit-Release_2024_09_5-${{ matrix.os }}
 
+    # The cache dir must exist on the host before the container starts so it can
+    # be bind-mounted; before-all writes the built RDKit into it from inside the
+    # container, which is what lets actions/cache/save below find something.
+    - name: Prepare RDKit cache dir (Linux)
+      if: runner.os == 'Linux'
+      run: mkdir -p rdkit-install
+
     - name: Build wheels
       uses: pypa/cibuildwheel@v3.0.0
       env:
+        CIBW_CONTAINER_ENGINE: "docker; create_args: --volume=${{ github.workspace }}/rdkit-install:/host-rdkit-install"
         CIBW_BUILD_VERBOSITY: 1
 
     # Save RDKit even if the build failed (always()), but only on a cache miss:
