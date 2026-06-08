@@ -4,7 +4,7 @@ Python bindings for [Coot](https://www2.mrc-lmb.cam.ac.uk/personal/pemsley/coot/
 
 ## Overview
 
-Coot is the standard tool for macromolecular model building in X-ray and cryo-EM crystallography. This package exposes Coot's core API as a Python extension module, allowing you to run model building, refinement, validation and ligand fitting programmatically — without a display or GUI.
+Coot is the standard tool for macromolecular model building in X-ray crystallography and cryo-EM. This package exposes Coot's core API as a Python extension module, allowing you to run model building, refinement, validation and ligand fitting programmatically — without a display or GUI.
 
 The central class is `molecules_container_t`, which manages a collection of molecular models and electron density maps and provides methods to operate on them.
 
