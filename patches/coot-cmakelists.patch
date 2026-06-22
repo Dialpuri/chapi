@@ -1,8 +1,8 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index c8e2321b8..47f69d1b6 100644
+index b72e78655..18098c4ff 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -14,18 +14,22 @@ endif()
+@@ -22,18 +22,22 @@ endif()
  # Without RDKit, Coot currently needs C++17
  set(CMAKE_CXX_STANDARD 20)
  
@@ -31,7 +31,7 @@ index c8e2321b8..47f69d1b6 100644
  find_package(Doxygen REQUIRED)
  
  set(THREADS_PREFER_PTHREAD_FLAG ON)
-@@ -44,6 +48,109 @@ if(NOT nanobind_DIR)
+@@ -52,6 +56,109 @@ if(NOT nanobind_DIR)
  endif()
  find_package(nanobind CONFIG REQUIRED)
  
@@ -141,7 +141,7 @@ index c8e2321b8..47f69d1b6 100644
  # only via homebrew on macOS (not tried to compile them myself) - see below also though.
  if (APPLE)
  else()
-@@ -61,10 +168,12 @@ endif(WIN32)
+@@ -69,10 +176,12 @@ endif(WIN32)
  # - If the user set CMAKE_INSTALL_PREFIX explicitly, install relative to it.
  # - Otherwise (default /usr/local), install directly to Python_SITELIB so that
  #   venv builds land inside the venv rather than in /usr/local.
@@ -158,7 +158,7 @@ index c8e2321b8..47f69d1b6 100644
  endif()
  
  
-@@ -79,13 +188,22 @@ add_definitions(-DANALYSE_REFINEMENT_TIMING -DPACKAGE_VERSION="1.3.1"
+@@ -87,13 +196,22 @@ add_definitions(-DANALYSE_REFINEMENT_TIMING -DPACKAGE_VERSION="1.3.1"
  #
  add_definitions(-DMAKE_ENHANCED_LIGAND_TOOLS="1")
  message("-- Found ENHANCED_LIGAND_TOOLS setting - now requiring the RDKit")
@@ -183,7 +183,7 @@ index c8e2321b8..47f69d1b6 100644
  set(RDKit_libs_for_libcootapi RDKit::rdkit_base RDKit::Descriptors RDKit::DistGeomHelpers RDKit::PartialCharges RDKit::ForceFieldHelpers RDKit::ForceField RDKit::Optimizer RDKit::MolDraw2D  RDKit::MolChemicalFeatures)
  
  # we can be on Apple, and also have access to homebrew dwarf and elf - but this typically not the case
-@@ -109,7 +227,14 @@ endif()
+@@ -117,7 +235,14 @@ endif()
  
  #  pyrogen, auxil, goograph, src ignored.
  
@@ -199,7 +199,7 @@ index c8e2321b8..47f69d1b6 100644
              ${coot_src}/MoleculesToTriangles/CXXSurface/CXXBall.cpp
              ${coot_src}/MoleculesToTriangles/CXXSurface/CXXChargeTable.cpp
              ${coot_src}/MoleculesToTriangles/CXXSurface/CXXCircle.cpp
-@@ -534,7 +659,7 @@ endif()
+@@ -545,7 +670,7 @@ endif()
  # Parse the doxygen XML at build time and generate a C++ source that embeds the
  # docstrings into the module, so the documentation is available at runtime even
  # when the source tree (and the doxygen XML) has been removed.
@@ -208,7 +208,7 @@ index c8e2321b8..47f69d1b6 100644
  set(COOT_DOCSTRINGS_GENERATED ${CMAKE_CURRENT_BINARY_DIR}/coot-docstrings-generated.cc)
  
  add_executable(coot-make-docstrings ${coot_src}/api/make-docstrings-source.cc
-@@ -543,30 +668,33 @@ add_executable(coot-make-docstrings ${coot_src}/api/make-docstrings-source.cc
+@@ -554,30 +679,33 @@ add_executable(coot-make-docstrings ${coot_src}/api/make-docstrings-source.cc
  target_include_directories(coot-make-docstrings PRIVATE ${coot_src} ${coot_src}/api ${coot_src}/coot-utils)
  target_compile_features(coot-make-docstrings PRIVATE cxx_std_17)
  
@@ -258,7 +258,7 @@ index c8e2321b8..47f69d1b6 100644
  nanobind_add_module(coot_headless_api ${coot_src}/api/molecules-container-nanobind.cc
                                        ${coot_src}/api/molecules-container-nanobind-functions.cc
                                        ${coot_src}/api/coot-docstring-extract.cc
-@@ -586,7 +714,11 @@ if (MAKE_COOT_HEADLESS_API_PYI)
+@@ -597,7 +725,11 @@ if (MAKE_COOT_HEADLESS_API_PYI)
      PYTHON_PATH $<TARGET_FILE_DIR:coot_headless_api>
      DEPENDS coot_headless_api
    )
@@ -271,7 +271,7 @@ index c8e2321b8..47f69d1b6 100644
    # MARKER_FILE py.typed
  endif()
  
-@@ -603,16 +735,24 @@ if (ENABLE_DWARF)
+@@ -614,16 +746,24 @@ if (ENABLE_DWARF)
  endif()
  
  target_include_directories(cootmoleculestotriangles PRIVATE ${MMDB2_INCLUDE_DIR}
@@ -299,7 +299,7 @@ index c8e2321b8..47f69d1b6 100644
  
  if (OSPRAY_PREFIX)
     target_link_libraries(cootapi PRIVATE ospray::ospray)
-@@ -656,117 +796,154 @@ target_include_directories(coot_headless_api PRIVATE ${coot_src} ${coot_src}/coo
+@@ -667,119 +807,156 @@ target_include_directories(coot_headless_api PRIVATE ${coot_src} ${coot_src}/coo
                                                       ${RDKit_INCLUDE_DIRS} ${GLM_INCLUDE_DIRS}
                                                       ${GSL_INCLUDE_DIRS} ${PNG_PNG_INCLUDE_DIR})
  
@@ -359,26 +359,6 @@ index c8e2321b8..47f69d1b6 100644
 -set_target_properties(cootapi PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
 -
 -set_target_properties(coot_headless_api PROPERTIES INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
--
--set_target_properties(coot_headless_api PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
--
--install(TARGETS cootmoleculestotriangles cootapi)
--
--install(FILES standard-residues.pdb  DESTINATION share/coot)
--
--install(FILES data/syminfo.lib       DESTINATION share/coot/data)
--
--install(DIRECTORY rama-data          DESTINATION share/coot)
--
--install(DIRECTORY data/metal         DESTINATION share/coot/data)
--
--install(DIRECTORY data/cho-acedrg    DESTINATION share/coot/data)
--
--install(DIRECTORY data/cho-models    DESTINATION share/coot/data)
--
--install(DIRECTORY data/cho-links     DESTINATION share/coot/data)
--
--install(DIRECTORY data/pdb-templates DESTINATION share/coot/data)
 +# Command-line tools and test programs. They are not part of the Python wheel,
 +# so they are only built for a normal system install.
 +if(NOT SKBUILD)
@@ -412,31 +392,7 @@ index c8e2321b8..47f69d1b6 100644
 +  target_link_libraries(mmcif-tests PUBLIC ${MMDB2_LIBRARY})
 +endif()
  
--install(DIRECTORY ${coot_src}/analysis     DESTINATION include/coot/analysis     FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
--install(DIRECTORY ${coot_src}/angles       DESTINATION include/coot/angles       FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
--install(DIRECTORY ${coot_src}/api          DESTINATION include/coot/api          FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
--install(DIRECTORY ${coot_src}/auxil        DESTINATION include/coot/auxil        FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
--install(DIRECTORY ${coot_src}/build        DESTINATION include/coot/build        FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
--install(DIRECTORY ${coot_src}/ccp4mg-utils DESTINATION include/coot/ccp4mg-utils FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
--install(DIRECTORY ${coot_src}/compat       DESTINATION include/coot/compat       FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
--install(DIRECTORY ${coot_src}/coot-utils   DESTINATION include/coot/coot-utils   FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
--install(DIRECTORY ${coot_src}/cootaneer    DESTINATION include/coot/cootaneer    FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
--install(DIRECTORY ${coot_src}/cootilus     DESTINATION include/coot/cootilus     FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
--install(DIRECTORY ${coot_src}/coords       DESTINATION include/coot/coords       FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
--install(DIRECTORY ${coot_src}/db-main      DESTINATION include/coot/db-main      FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
--install(DIRECTORY ${coot_src}/geometry     DESTINATION include/coot/geometry     FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
--install(DIRECTORY ${coot_src}/high-res     DESTINATION include/coot/high-res     FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
--install(DIRECTORY ${coot_src}/ideal        DESTINATION include/coot/ideal        FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
--install(DIRECTORY ${coot_src}/lidia-core   DESTINATION include/coot/lidia-core   FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
--install(DIRECTORY ${coot_src}/ligand       DESTINATION include/coot/ligand       FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
--install(DIRECTORY ${coot_src}/mini-mol     DESTINATION include/coot/mini-mol     FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
--install(DIRECTORY ${coot_src}/pli          DESTINATION include/coot/pli          FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
--install(DIRECTORY ${coot_src}/protein_db   DESTINATION include/coot/protein_db   FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
--install(DIRECTORY ${coot_src}/pyrogen      DESTINATION include/coot/pyrogen      FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
--install(DIRECTORY ${coot_src}/skeleton     DESTINATION include/coot/skeleton     FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
--install(DIRECTORY ${coot_src}/utils        DESTINATION include/coot/utils        FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
--install(DIRECTORY ${coot_src}/density-contour      DESTINATION include/coot/density-contour      FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
--install(DIRECTORY ${coot_src}/MoleculesToTriangles DESTINATION include/coot/MoleculesToTriangles FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-set_target_properties(coot_headless_api PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
 +# Install RPATHs. In a wheel the shared libraries sit next to the extension
 +# module, so use a loader-relative RPATH (@loader_path / $ORIGIN) to keep the
 +# wheel relocatable; a system install points at the absolute lib directory.
@@ -463,8 +419,7 @@ index c8e2321b8..47f69d1b6 100644
 +  set_target_properties(coot_headless_api PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
 +endif()
  
--install(DIRECTORY ${CMAKE_SOURCE_DIR}/monomers DESTINATION share/coot/lib/data
--        FILES_MATCHING PATTERN "*" PATTERN "*Makefile.*" EXCLUDE)
+-install(TARGETS cootmoleculestotriangles cootapi)
 +if(SKBUILD)
 +  install(TARGETS cootapi LIBRARY DESTINATION ${COOT_WHEEL_PACKAGE_DIR})
 +
@@ -494,11 +449,57 @@ index c8e2321b8..47f69d1b6 100644
 +  install(TARGETS cootmoleculestotriangles cootapi)
 +endif()
  
--# Thanks Charles B.
--install(TARGETS coot_headless_api DESTINATION ${Python_SITELIB_REL})
+-install(FILES standard-residues.pdb  DESTINATION share/coot)
 +if(NOT SKBUILD)
 +  install(FILES standard-residues.pdb  DESTINATION share/coot)
-+
+ 
+ install(FILES cod-types-db-normalized.bin DESTINATION share/coot)
+ 
+-install(FILES data/syminfo.lib       DESTINATION share/coot/data)
+-
+-install(DIRECTORY rama-data          DESTINATION share/coot)
+-
+-install(DIRECTORY data/metal         DESTINATION share/coot/data)
+-
+-install(DIRECTORY data/cho-acedrg    DESTINATION share/coot/data)
+-
+-install(DIRECTORY data/cho-models    DESTINATION share/coot/data)
+-
+-install(DIRECTORY data/cho-links     DESTINATION share/coot/data)
+-
+-install(DIRECTORY data/pdb-templates DESTINATION share/coot/data)
+-
+-install(DIRECTORY ${coot_src}/analysis     DESTINATION include/coot/analysis     FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/angles       DESTINATION include/coot/angles       FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/api          DESTINATION include/coot/api          FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/auxil        DESTINATION include/coot/auxil        FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/build        DESTINATION include/coot/build        FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/ccp4mg-utils DESTINATION include/coot/ccp4mg-utils FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/compat       DESTINATION include/coot/compat       FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/coot-utils   DESTINATION include/coot/coot-utils   FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/cootaneer    DESTINATION include/coot/cootaneer    FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/cootilus     DESTINATION include/coot/cootilus     FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/coords       DESTINATION include/coot/coords       FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/db-main      DESTINATION include/coot/db-main      FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/geometry     DESTINATION include/coot/geometry     FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/high-res     DESTINATION include/coot/high-res     FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/ideal        DESTINATION include/coot/ideal        FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/lidia-core   DESTINATION include/coot/lidia-core   FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/ligand       DESTINATION include/coot/ligand       FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/mini-mol     DESTINATION include/coot/mini-mol     FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/pli          DESTINATION include/coot/pli          FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/protein_db   DESTINATION include/coot/protein_db   FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/pyrogen      DESTINATION include/coot/pyrogen      FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/skeleton     DESTINATION include/coot/skeleton     FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/utils        DESTINATION include/coot/utils        FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/density-contour      DESTINATION include/coot/density-contour      FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-install(DIRECTORY ${coot_src}/MoleculesToTriangles DESTINATION include/coot/MoleculesToTriangles FILES_MATCHING PATTERN "*.hh" PATTERN "*.h")
+-
+-install(DIRECTORY ${CMAKE_SOURCE_DIR}/monomers DESTINATION share/coot/lib/data
+-        FILES_MATCHING PATTERN "*" PATTERN "*Makefile.*" EXCLUDE)
+-
+-# Thanks Charles B.
+-install(TARGETS coot_headless_api DESTINATION ${Python_SITELIB_REL})
 +  install(FILES data/syminfo.lib       DESTINATION share/coot/data)
 +
 +  install(DIRECTORY rama-data          DESTINATION share/coot)
