@@ -74,6 +74,9 @@ ${WRK_DIR}/checkout/mmdb2//mmdb2/mmdb_defs.h
 ${WRK_DIR}/checkout/mmdb2//mmdb2/mmdb_io_file.h
 )
 target_compile_options(mmdb2 PUBLIC "-DFFTW_ENABLE_FLOAT")
+if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_compile_options(mmdb2 PRIVATE "-include" "stddef.h")
+endif()
 set_target_properties(mmdb2 PROPERTIES PUBLIC_HEADER "${mmdb2_HEADERS}")
 
 if(MSVC)
