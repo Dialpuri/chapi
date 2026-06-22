@@ -48,7 +48,7 @@ jobs:
       run: mkdir -p rdkit-install
 
     - name: Build wheels
-      uses: pypa/cibuildwheel@v3.0.0
+      uses: pypa/cibuildwheel@v3.1.0
       env:
         CIBW_CONTAINER_ENGINE: "docker; create_args: --volume=${{ github.workspace }}/rdkit-install:/host-rdkit-install"
         CIBW_BUILD_VERBOSITY: 1
