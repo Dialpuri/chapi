@@ -27,7 +27,4 @@ if not _os.environ.get("COOT_PREFIX") and not _os.environ.get("COOT_DATA_DIR"):
 # ``import coot_headless_api`` behaves exactly like importing the bare module.
 from .coot_headless_api import *  # noqa: E402,F401,F403
 from . import coot_headless_api as _ext  # noqa: E402
-
-__doc__ = getattr(_ext, "__doc__", __doc__)
-if hasattr(_ext, "__version__"):
-    __version__ = _ext.__version__
+from .__version__ import __version__  # noqa: E402,F401
