@@ -1,0 +1,12 @@
+diff --git a/cremer-pople-sphere/density_map.cc b/cremer-pople-sphere/density_map.cc
+index 168d60b88..a50670179 100644
+--- a/cremer-pople-sphere/density_map.cc
++++ b/cremer-pople-sphere/density_map.cc
+@@ -3,6 +3,7 @@
+ //
+ 
+ #include "density_map.hh"
++#include <cstdint>
+ #include <fstream>
+ #include <iostream>
+ #include <sstream>
