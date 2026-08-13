@@ -18,7 +18,7 @@ requires-python = ">=3.10"
 cmake.source-dir = "coot"
 cmake.build-type = "Release"
 build-dir = "build_wheel"
-cmake.targets = ["coot_headless_api", "coot_headless_api_ext_stub"]
+build.targets = ["coot_headless_api", "coot_headless_api_ext_stub"]
 
 wheel.packages = []
 
