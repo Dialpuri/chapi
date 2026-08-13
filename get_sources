@@ -134,7 +134,7 @@ if [[ "$(uname)" == "Linux" ]]; then
             -DRDK_BUILD_INCHI_SUPPORT=ON \
             -DRDK_BUILD_AVALON_SUPPORT=ON \
             -DRDK_BUILD_FREETYPE_SUPPORT=OFF
-        cmake --build rdkit-build -j$(nproc)
+        cmake --build rdkit-build -j"${RDKIT_BUILD_JOBS:-$(nproc)}"
         cmake --install rdkit-build
         rm -rf rdkit-build
         echo "RDKit installed to /opt/rdkit"
