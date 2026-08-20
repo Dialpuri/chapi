@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 000111bd4..d09c421e9 100644
+index 000111bd4..107f8d85a 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -1,4 +1,4 @@
@@ -189,7 +189,29 @@ index 000111bd4..d09c421e9 100644
  set(RDKit_libs_for_libcootapi RDKit::rdkit_base RDKit::Descriptors RDKit::DistGeomHelpers RDKit::PartialCharges RDKit::ForceFieldHelpers RDKit::ForceField RDKit::Optimizer RDKit::MolDraw2D  RDKit::MolChemicalFeatures)
  
  # we can be on Apple, and also have access to homebrew dwarf and elf - but this typically not the case
-@@ -123,7 +241,14 @@ endif()
+@@ -114,16 +232,33 @@ endif()
+ 
+ # OSPRay ray-tracing renderer for publication-quality image output.
+ # Use -DOSPRAY_PREFIX=/path/to/ospray to enable.
++#
++# The wheel build points OSPRAY_PREFIX at the usual install location for the
++# platform (see pyproject.toml), so this is searched, not required: a machine
++# without OSPRay still builds, just without ray tracing. Anything that must have
++# it should check for it - the wheel smoke test renders an image and fails if
++# ray tracing is missing.
+ if (OSPRAY_PREFIX)
+    list(APPEND CMAKE_PREFIX_PATH ${OSPRAY_PREFIX})
+-   find_package(ospray REQUIRED)
+-   add_definitions(-DHAVE_OSPRAY)
+-   message("-- Found OSPRay: ${OSPRAY_PREFIX}")
++   find_package(ospray CONFIG QUIET)
++   if (ospray_FOUND)
++      add_definitions(-DHAVE_OSPRAY)
++      message("-- Found OSPRay: ${OSPRAY_PREFIX}")
++   else()
++      message(WARNING "No OSPRay under OSPRAY_PREFIX=${OSPRAY_PREFIX} - building without ray tracing")
++   endif()
+ endif()
  
  #  pyrogen, auxil, goograph, src ignored.
  
@@ -205,7 +227,7 @@ index 000111bd4..d09c421e9 100644
              ${coot_src}/MoleculesToTriangles/CXXSurface/CXXBall.cpp
              ${coot_src}/MoleculesToTriangles/CXXSurface/CXXChargeTable.cpp
              ${coot_src}/MoleculesToTriangles/CXXSurface/CXXCircle.cpp
-@@ -644,7 +769,11 @@ if (MAKE_COOT_HEADLESS_API_PYI)
+@@ -644,7 +779,11 @@ if (MAKE_COOT_HEADLESS_API_PYI)
      PYTHON_PATH $<TARGET_FILE_DIR:coot_headless_api>
      DEPENDS coot_headless_api
    )
@@ -218,7 +240,7 @@ index 000111bd4..d09c421e9 100644
    # MARKER_FILE py.typed
  endif()
  
-@@ -661,16 +790,24 @@ if (ENABLE_DWARF)
+@@ -661,19 +800,50 @@ if (ENABLE_DWARF)
  endif()
  
  target_include_directories(cootmoleculestotriangles PRIVATE ${MMDB2_INCLUDE_DIR}
@@ -244,9 +266,36 @@ index 000111bd4..d09c421e9 100644
 -target_link_libraries(cootapi PRIVATE cootmoleculestotriangles ${SSM_LIBRARY} ${CLIPPER-MINIMOL_LIBRARY} ${CLIPPER-MMDB_LIBRARY} ${CLIPPER-CIF_LIBRARY} ${CLIPPER-CORE_LIBRARY} ${CLIPPER-CCP4_LIBRARY} ${CLIPPER-CONTRIB_LIBRARY} ${FFTW2_LIBRARY} ${RFFTW2_LIBRARY} ${MMDB2_LIBRARY} ${CCP4C_LIBRARY} ${ZLIB_LIBRARIES} ${GSL_LIBRARIES} ${GSL_CBLAS_LIBRARY} ${RDKit_libs_for_libcootapi} ${PNG_LIBRARY} Boost::thread Boost::iostreams gemmi::gemmi_cpp ${libdwarf} ${libelf})
 +target_link_libraries(cootapi PRIVATE cootmoleculestotriangles ${SSM_LIBRARY} ${CLIPPER-MINIMOL_LIBRARY} ${CLIPPER-MMDB_LIBRARY} ${CLIPPER-CIF_LIBRARY} ${CLIPPER-CORE_LIBRARY} ${CLIPPER-CCP4_LIBRARY} ${CLIPPER-CONTRIB_LIBRARY} ${CLIPPER-GEMMI_LIBRARY} ${FFTW2_LIBRARY} ${RFFTW2_LIBRARY} ${FFTW3F_LIBRARY} ${MMDB2_LIBRARY} ${CCP4C_LIBRARY} ${ZLIB_LIBRARIES} ${GSL_LIBRARIES} ${GSL_CBLAS_LIBRARY} ${RDKit_libs_for_libcootapi} ${PNG_LIBRARY} Boost::thread Boost::iostreams gemmi::gemmi_cpp ${libdwarf} ${libelf})
  
- if (OSPRAY_PREFIX)
+-if (OSPRAY_PREFIX)
++if (ospray_FOUND)
     target_link_libraries(cootapi PRIVATE ospray::ospray)
-@@ -698,118 +835,155 @@ target_include_directories(coot_headless_api PRIVATE ${coot_src} ${coot_src}/coo
++   # OSPRay dlopen()s its CPU device (libospray_module_cpu) inside ospInit(), so
++   # a wheel-repair tool never sees it and would ship a wheel that silently needs
++   # a system OSPRay. On macOS, recording it as a link-time dependency is enough:
++   # delocate then bundles it - and through it Open VKL and Embree - next to the
++   # bundled libospray, keeping the file name the loader asks for.
++   #
++   # Not on Linux: auditwheel renames what it bundles, so the OSPRay libraries are
++   # excluded from it and bundled by packaging/bundle_ospray_linux.py instead. A
++   # link-time dependency there would name the SONAME (.so.3) while ospInit()
++   # dlopen()s the full version (.so.3.2.0), loading the module twice.
++   if (APPLE)
++      file(GLOB _ospray_module_cpu
++           "${OSPRAY_PREFIX}/lib/libospray_module_cpu*${CMAKE_SHARED_LIBRARY_SUFFIX}*"
++           "${OSPRAY_PREFIX}/lib64/libospray_module_cpu*${CMAKE_SHARED_LIBRARY_SUFFIX}*")
++      list(SORT _ospray_module_cpu)
++      if (_ospray_module_cpu)
++         list(GET _ospray_module_cpu 0 _ospray_module_cpu_lib)
++         target_link_libraries(cootapi PRIVATE ${_ospray_module_cpu_lib})
++         message("-- Found OSPRay CPU module (linked so it is bundled): ${_ospray_module_cpu_lib}")
++      else()
++         message(WARNING "No libospray_module_cpu under ${OSPRAY_PREFIX} - ray tracing will need a system OSPRay")
++      endif()
++   endif()
+ endif()
+ 
+ target_compile_features(cootapi PRIVATE cxx_std_17)
+@@ -698,118 +868,155 @@ target_include_directories(coot_headless_api PRIVATE ${coot_src} ${coot_src}/coo
                                                       ${RDKit_INCLUDE_DIRS} ${GLM_INCLUDE_DIRS}
                                                       ${GSL_INCLUDE_DIRS} ${PNG_PNG_INCLUDE_DIR})
  
@@ -504,7 +553,7 @@ index 000111bd4..d09c421e9 100644
  
  # The chapi Python package: on import it points coot_headless_api at the
  # installed data dir. Installs as <site-packages>/chapi/__init__.py.
-@@ -820,4 +994,6 @@ install(TARGETS coot_headless_api DESTINATION lib)
+@@ -820,4 +1027,6 @@ install(TARGETS coot_headless_api DESTINATION lib)
  
  # thanks merkys
  set_target_properties(cootapi PROPERTIES SOVERSION 1.2)

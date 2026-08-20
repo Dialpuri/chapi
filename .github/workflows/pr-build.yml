@@ -1,0 +1,83 @@
+name: PR build
+
+# A quick check that the wheel still builds and works on both platforms. Only one
+# Python version per platform - the release workflow (wheels.yml) covers the full
+# matrix on tags. The build is the test: cibuildwheel runs test/smoke_test.py
+# against each repaired wheel, which imports it, reads the bundled monomer data
+# and ray-traces an image, so a broken OSPRay bundle fails here.
+on:
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+# A new push to the PR makes the running build irrelevant.
+concurrency:
+  group: pr-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build_wheel:
+    name: Build wheel on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, ubuntu-latest]
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    # Same cache keys as wheels.yml, so a PR run can reuse the RDKit and OSPRay
+    # builds already cached on the default branch instead of building them again.
+    - name: Restore RDKit cache (Linux)
+      id: rdkit-cache
+      if: runner.os == 'Linux'
+      uses: actions/cache/restore@v4
+      with:
+        path: rdkit-install
+        key: rdkit-Release_2024_09_5-${{ matrix.os }}
+
+    - name: Restore OSPRay cache (Linux)
+      id: ospray-cache
+      if: runner.os == 'Linux'
+      uses: actions/cache/restore@v4
+      with:
+        path: ospray-install
+        key: ospray-v3.2.0-${{ matrix.os }}
+
+    # The cache dirs must exist on the host before the container starts so they can
+    # be bind-mounted; before-all writes the built RDKit/OSPRay into them from inside
+    # the container, which is what lets actions/cache/save below find something.
+    - name: Prepare dependency cache dirs (Linux)
+      if: runner.os == 'Linux'
+      run: mkdir -p rdkit-install ospray-install
+
+    - name: Build wheel
+      uses: pypa/cibuildwheel@v3.1.0
+      env:
+        CIBW_BUILD: "cp313-*"
+        CIBW_CONTAINER_ENGINE: "docker; create_args: --volume=${{ github.workspace }}/rdkit-install:/host-rdkit-install --volume=${{ github.workspace }}/ospray-install:/host-ospray-install"
+        CIBW_BUILD_VERBOSITY: 1
+
+    # Save on a cache miss even if the wheel build failed, so a second attempt
+    # doesn't rebuild the dependencies from scratch.
+    - name: Save RDKit cache (Linux)
+      if: always() && runner.os == 'Linux' && steps.rdkit-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: rdkit-install
+        key: rdkit-Release_2024_09_5-${{ matrix.os }}
+
+    - name: Save OSPRay cache (Linux)
+      if: always() && runner.os == 'Linux' && steps.ospray-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ospray-install
+        key: ospray-v3.2.0-${{ matrix.os }}
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: pr-wheel-${{ matrix.os }}
+        path: ./wheelhouse/*.whl
