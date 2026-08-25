@@ -22,6 +22,18 @@ build.targets = ["coot_headless_api", "coot_headless_api_ext_stub"]
 
 wheel.packages = []
 
+# Enable the OSPRay ray tracer by default, so a plain `pip install .` gets the
+# same feature set as the released wheels. These are where each platform's build
+# puts it: Homebrew on macOS, get_sources' superbuild on Linux. If OSPRay isn't
+# there the build carries on without ray tracing (see coot/CMakeLists.txt).
+[[tool.scikit-build.overrides]]
+if.platform-system = "darwin"
+cmake.define.OSPRAY_PREFIX = "/opt/homebrew/opt/ospray"
+
+[[tool.scikit-build.overrides]]
+if.platform-system = "linux"
+cmake.define.OSPRAY_PREFIX = "/opt/ospray"
+
 [tool.scikit-build.metadata.version]
 provider = "scikit_build_core.metadata.regex"
 input = "packaging/coot_headless_api/__version__.py"
@@ -36,12 +48,27 @@ test-command = "python {project}/test/smoke_test.py"
 [tool.cibuildwheel.linux]
 manylinux-x86_64-image = "quay.io/pypa/manylinux_2_34_x86_64:latest"
 manylinux-aarch64-image = "quay.io/pypa/manylinux_2_34_aarch64:latest"
+# cibuildwheel joins these with `&&`, so a trailing `|| true` would swallow the
+# exit status of everything before it - which once let a failed get_sources through
+# and silently produced a wheel without ray tracing. Each conditional copy is
+# therefore an `if`, which exits 0 on its own when the condition doesn't hold.
 before-all = [
-    "[ -d /host-rdkit-install/rdkit ] && cp -r /host-rdkit-install/rdkit /opt/rdkit && echo 'RDKit restored from cache' || true",
+    "if [ -d /host-rdkit-install/rdkit ]; then cp -r /host-rdkit-install/rdkit /opt/rdkit; echo 'RDKit restored from cache'; fi",
+    "if [ -d /host-ospray-install/ospray ]; then cp -r /host-ospray-install/ospray /opt/ospray; echo 'OSPRay restored from cache'; fi",
     "dnf install -y epel-release",
-    "dnf install -y gsl-devel libpng-devel zlib-devel cmake ninja-build bzip2 elfutils-devel boost-devel eigen3-devel cairo-devel doxygen",
+    "dnf install -y gsl-devel libpng-devel zlib-devel cmake ninja-build bzip2 elfutils-devel boost-devel eigen3-devel cairo-devel doxygen git",
     "bash ./get_sources",
-    "[ -d /opt/rdkit ] && [ ! -d /host-rdkit-install/rdkit ] && cp -r /opt/rdkit /host-rdkit-install/rdkit && echo 'RDKit saved to cache dir' || true",
+    "if [ -d /opt/rdkit ] && [ ! -d /host-rdkit-install/rdkit ]; then cp -r /opt/rdkit /host-rdkit-install/rdkit; echo 'RDKit saved to cache dir'; fi",
+    "if [ -d /opt/ospray ] && [ ! -d /host-ospray-install/ospray ]; then cp -r /opt/ospray /host-ospray-install/ospray; echo 'OSPRay saved to cache dir'; fi",
+]
+
+# auditwheel renames the libraries it bundles, which breaks OSPRay's by-name lookup
+# of its CPU device at ospInit(). Keep the OSPRay set out of its hands and bundle it
+# unrenamed instead - see packaging/bundle_ospray_linux.py. /project is where
+# cibuildwheel mounts the source tree inside the container.
+repair-wheel-command = [
+    "auditwheel repair -w {dest_dir} {wheel} --exclude 'libospray*' --exclude 'libopenvkl*' --exclude 'librkcommon*' --exclude 'libembree*' --exclude 'libtbb*'",
+    "python /project/packaging/bundle_ospray_linux.py {dest_dir} /opt/ospray",
 ]
 
 [tool.cibuildwheel.linux.environment]
@@ -52,7 +79,7 @@ LDFLAGS = "-L/opt/rdkit/lib -Wl,-rpath,/opt/rdkit/lib"
 
 [tool.cibuildwheel.macos]
 before-all = [
-    "brew install gsl boost libpng rdkit expat doxygen",
+    "brew install gsl boost libpng rdkit expat doxygen ospray",
     "bash ./get_sources",
 ]
 archs = ["auto"]

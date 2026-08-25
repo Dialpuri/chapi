@@ -23,6 +23,21 @@ pip install coot-headless-api
 | Linux (aarch64)| ✅ glibc 2.34+ (Ubuntu 22.04+) |
 | Windows        | ❌ |
 
+### Ray tracing
+
+The wheels bundle Intel's [OSPRay](https://www.ospray.org/) renderer, so
+`ray_trace_init()` / `ray_trace_image()` work out of the box — no extra install:
+
+```python
+mc.ray_trace_init()
+mc.ray_trace_image(json.dumps({"output_file_stub": "figure",
+                               "molecules": {str(imol): {"style": "bonds"}}}))
+mc.ray_trace_shutdown()
+```
+
+Building from source enables it with `-DOSPRAY_PREFIX=/path/to/ospray`; without
+that flag the ray-tracing calls warn and do nothing.
+
 ## Getting started
 
 To get started, take a look at the [coot-headless-api documentation](https://www.mrc-lmb.cam.ac.uk/lucrezia/libcootapi-documentation/index.html).

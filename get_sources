@@ -141,6 +141,50 @@ if [[ "$(uname)" == "Linux" ]]; then
     fi
 fi
 
+# OSPRay (ray-traced image output). macOS gets it from Homebrew; on Linux there is
+# no distro package, so build it with OSPRay's superbuild, which also fetches ISPC
+# and TBB and builds rkcommon, Embree and Open VKL. Enabled at configure time with
+# -DOSPRAY_PREFIX=/opt/ospray (see the wheel build environment in pyproject.toml).
+ospray_release="v3.2.0"
+if [[ "$(uname)" == "Linux" ]]; then
+    if [ -f "/opt/ospray/lib/libospray.so" ] || [ -f "/opt/ospray/lib64/libospray.so" ]; then
+        echo "Found OSPRay"
+    else
+        echo "Building OSPRay ${ospray_release} from source"
+        if [ ! -d "ospray-${ospray_release}" ]; then
+            git clone --depth 1 --branch "${ospray_release}" https://github.com/ospray/ospray.git "ospray-${ospray_release}"
+        fi
+        # The superbuild's prebuilt TBB and Embree are x86_64-only, and it downloads
+        # them regardless of host architecture - on aarch64 that fails at link time
+        # with "file in wrong format". Build both from source there instead.
+        ospray_arch_args=()
+        if [[ "$(uname -m)" == "aarch64" || "$(uname -m)" == "arm64" ]]; then
+            ospray_arch_args=(-DBUILD_TBB_FROM_SOURCE=ON -DBUILD_EMBREE_FROM_SOURCE=ON)
+            echo "  (aarch64: building TBB and Embree from source)"
+        fi
+        # Open VKL 2.0.1 still declares cmake_minimum_required(VERSION <3.5), which
+        # CMake 4 rejects. The env var reaches the sub-project configures that the
+        # superbuild runs, where a -D on the outer command line would not.
+        export CMAKE_POLICY_VERSION_MINIMUM=3.5
+        # The superbuild installs each component as it is built, so no separate
+        # `cmake --install` step. INSTALL_IN_SEPARATE_DIRECTORIES=OFF puts them all
+        # under one prefix, which is what the wheel build (and the runtime module
+        # lookup, which is relative to libospray) expects.
+        cmake -S "ospray-${ospray_release}/scripts/superbuild" -B ospray-build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/opt/ospray \
+            -DINSTALL_IN_SEPARATE_DIRECTORIES=OFF \
+            -DBUILD_OSPRAY_APPS=OFF \
+            -DBUILD_GLFW=OFF \
+            -DBUILD_OIDN=OFF \
+            -DBUILD_OSPRAY_MODULE_MPI=OFF \
+            "${ospray_arch_args[@]}"
+        cmake --build ospray-build -j"${OSPRAY_BUILD_JOBS:-$(nproc)}"
+        rm -rf ospray-build
+        echo "OSPRay installed to /opt/ospray"
+    fi
+fi
+
 # RDKit's Homebrew cmake config references /opt/homebrew/lib/libexpat.a, but expat is keg-only
 # so that path doesn't exist. Create a symlink at the expected location.
 if [[ "$(uname)" == "Darwin" ]]; then

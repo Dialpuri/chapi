@@ -40,17 +40,25 @@ jobs:
         path: rdkit-install
         key: rdkit-Release_2024_09_5-${{ matrix.os }}
 
-    # The cache dir must exist on the host before the container starts so it can
-    # be bind-mounted; before-all writes the built RDKit into it from inside the
-    # container, which is what lets actions/cache/save below find something.
-    - name: Prepare RDKit cache dir (Linux)
+    - name: Restore OSPRay cache (Linux)
+      id: ospray-cache
       if: runner.os == 'Linux'
-      run: mkdir -p rdkit-install
+      uses: actions/cache/restore@v4
+      with:
+        path: ospray-install
+        key: ospray-v3.2.0-${{ matrix.os }}
+
+    # The cache dirs must exist on the host before the container starts so they can
+    # be bind-mounted; before-all writes the built RDKit/OSPRay into them from inside
+    # the container, which is what lets actions/cache/save below find something.
+    - name: Prepare dependency cache dirs (Linux)
+      if: runner.os == 'Linux'
+      run: mkdir -p rdkit-install ospray-install
 
     - name: Build wheels
       uses: pypa/cibuildwheel@v3.1.0
       env:
-        CIBW_CONTAINER_ENGINE: "docker; create_args: --volume=${{ github.workspace }}/rdkit-install:/host-rdkit-install"
+        CIBW_CONTAINER_ENGINE: "docker; create_args: --volume=${{ github.workspace }}/rdkit-install:/host-rdkit-install --volume=${{ github.workspace }}/ospray-install:/host-ospray-install"
         CIBW_BUILD_VERBOSITY: 1
 
     # Save RDKit even if the build failed (always()), but only on a cache miss:
@@ -61,6 +69,13 @@ jobs:
       with:
         path: rdkit-install
         key: rdkit-Release_2024_09_5-${{ matrix.os }}
+
+    - name: Save OSPRay cache (Linux)
+      if: always() && runner.os == 'Linux' && steps.ospray-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ospray-install
+        key: ospray-v3.2.0-${{ matrix.os }}
 
     - uses: actions/upload-artifact@v4
       with:
